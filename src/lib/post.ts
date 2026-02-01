@@ -1,5 +1,5 @@
 import { api, ApiResponse } from './api';
-import { PostListDto } from '@/types/post';
+import { PostListDto, PostDetailDto } from '@/types/post';
 
 export const postApi = {
   getPopularList: () =>
@@ -9,8 +9,17 @@ export const postApi = {
     api.get<ApiResponse<PostListDto[]>>('/post/list'),
 
   getDetail: (id: number) =>
-    api.get<ApiResponse<PostListDto>>(`/post/detail/${id}`),
+    api.get<ApiResponse<PostDetailDto>>(`/post/detail/${id}`),
 
-  getDetailWithViews: (id: number) =>
-    api.get<ApiResponse<PostListDto>>(`/post/detail/views/${id}`),
+  incrementViews: (id: number) =>
+    api.get<ApiResponse<number>>(`/post/detail/views/${id}`),
+
+  like: (id: number, token: string) =>
+    api.withAuth(token).post<ApiResponse<number>>(`/post/detail/like/${id}`),
+
+  unlike: (id: number, token: string) =>
+    api.withAuth(token).post<ApiResponse<number>>(`/post/detail/unlike/${id}`),
+
+  getLikes: (id: number) =>
+    api.get<ApiResponse<number>>(`/post/detail/${id}/likes`),
 };

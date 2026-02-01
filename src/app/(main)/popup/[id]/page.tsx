@@ -10,15 +10,21 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import DefaultImage from '@/components/ui/DefaultImage';
 import CommentSection from '@/components/features/CommentSection';
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
   return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
 }
 
 const DAY_LABELS: Record<string, string> = {
   MONDAY: '월', TUESDAY: '화', WEDNESDAY: '수',
   THURSDAY: '목', FRIDAY: '금', SATURDAY: '토', SUNDAY: '일',
+  Monday: '월', Tuesday: '화', Wednesday: '수',
+  Thursday: '목', Friday: '금', Saturday: '토', Sunday: '일',
+  monday: '월', tuesday: '화', wednesday: '수',
+  thursday: '목', friday: '금', saturday: '토', sunday: '일',
+  월: '월', 화: '화', 수: '수', 목: '목', 금: '금', 토: '토', 일: '일',
 };
 
 export default function PopupDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,21 +38,61 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [favorited, setFavorited] = useState(false);
+  const [shareToast, setShareToast] = useState(false);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       try {
-        const res = await postApi.getDetailWithViews(postId);
+        // 상세 조회
+        const res = await postApi.getDetail(postId);
         const data = res.result;
         setPost(data);
         setLikeCount(data?.likeCount ?? 0);
+
+        // 조회수 증가 (별도 호출, 반환값은 조회수 숫자)
+        postApi.incrementViews(postId).catch(() => {});
+
+        // 로그인 상태면 좋아요/즐겨찾기 상태 확인
+        const token = localStorage.getItem('token');
+        if (token) {
+          // 즐겨찾기 상태 확인
+          try {
+            const favRes = await favoriteApi.check(postId, token);
+            setFavorited(favRes.result === true);
+          } catch {
+            setFavorited(false);
+          }
+
+          // 좋아요 상태: getLikes로 현재 수를 가져오고,
+          // like 시도 → 반환된 수가 같으면 이미 좋아요 (idempotent), 다르면 새로 추가된 것이니 취소
+          try {
+            const beforeRes = await postApi.getLikes(postId);
+            const beforeCount = beforeRes.result ?? 0;
+
+            const afterRes = await postApi.like(postId, token);
+            const afterCount = afterRes.result ?? 0;
+
+            if (afterCount > beforeCount) {
+              // 새로 좋아요가 추가됨 → 원래 안 눌렀던 상태 → unlike로 원복
+              await postApi.unlike(postId, token);
+              setLiked(false);
+              setLikeCount(beforeCount);
+            } else {
+              // 수가 같음 → 이미 좋아요 상태 (idempotent)
+              setLiked(true);
+              setLikeCount(afterCount);
+            }
+          } catch {
+            // 에러 시 기본값 유지
+          }
+        }
       } catch {
         /* ignore */
       } finally {
         setLoading(false);
       }
     };
-    fetch();
+    fetchData();
   }, [postId]);
 
   const getToken = () => localStorage.getItem('token');
@@ -57,13 +103,14 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
     try {
       if (liked) {
-        await postApi.unlike(postId, token);
-        setLikeCount((c) => c - 1);
+        const res = await postApi.unlike(postId, token);
+        setLikeCount(res.result ?? likeCount - 1);
+        setLiked(false);
       } else {
-        await postApi.like(postId, token);
-        setLikeCount((c) => c + 1);
+        const res = await postApi.like(postId, token);
+        setLikeCount(res.result ?? likeCount + 1);
+        setLiked(true);
       }
-      setLiked(!liked);
     } catch {
       /* ignore */
     }
@@ -76,28 +123,48 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     try {
       if (favorited) {
         await favoriteApi.remove(postId, token);
+        setFavorited(false);
       } else {
         await favoriteApi.add(postId, token);
+        setFavorited(true);
       }
-      setFavorited(!favorited);
     } catch {
-      /* ignore */
+      // 이미 추가/삭제된 상태면 에러 → 상태 반전해서 보정
+      setFavorited(!favorited);
     }
   };
 
   const handleShare = async () => {
     const url = window.location.href;
-    if (navigator.share) {
-      await navigator.share({ title: post?.title, url });
-    } else {
-      await navigator.clipboard.writeText(url);
-      alert('링크가 복사되었습니다.');
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: post?.title ?? '', url });
+        return;
+      }
+    } catch {
+      // share dialog cancelled
     }
+
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = url;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setShareToast(true);
+    setTimeout(() => setShareToast(false), 2000);
   };
 
   if (loading) {
     return (
       <div className="px-5 pt-2 animate-pulse">
+        <div className="h-6 w-6 rounded mb-4" />
         <div className="aspect-[4/3] rounded-2xl bg-gray-100 mb-5" />
         <div className="h-5 bg-gray-100 rounded w-3/4 mb-3" />
         <div className="h-4 bg-gray-100 rounded w-1/2 mb-6" />
@@ -123,6 +190,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
   const hasImage = post.postImgUrl && !imgError;
   const address = [post.city, post.dong, post.street, post.detailAddress].filter(Boolean).join(' ');
+  const startDate = formatDate(post.startDate);
+  const endDate = formatDate(post.endDate);
 
   return (
     <div className="pb-8">
@@ -163,7 +232,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Tags */}
-        {post.tags?.length > 0 && (
+        {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {post.tags.map((tag) => (
               <span key={tag.id} className="px-2.5 py-1 bg-gray-50 rounded-full text-xs text-gray-500">
@@ -189,7 +258,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             <span className={favorited ? 'text-gray-900 font-medium' : 'text-gray-400'}>저장</span>
           </button>
 
-          <button onClick={handleShare} className="flex items-center gap-1.5 text-sm text-gray-400 transition-colors ml-auto">
+          <button onClick={handleShare} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors ml-auto">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="18" cy="5" r="3" />
               <circle cx="6" cy="12" r="3" />
@@ -205,29 +274,33 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            {post.viewCount}
+            {post.viewCount ?? 0}
           </div>
         </div>
 
         {/* Info Cards */}
         <div className="mt-5 space-y-4">
           {/* Period */}
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
+          {(startDate || endDate) && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">기간</p>
+                <p className="text-sm text-gray-900 font-medium">
+                  {startDate && endDate
+                    ? `${startDate} ~ ${endDate}`
+                    : startDate || endDate}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-400">기간</p>
-              <p className="text-sm text-gray-900 font-medium">
-                {formatDate(post.startDate)} ~ {formatDate(post.endDate)}
-              </p>
-            </div>
-          </div>
+          )}
 
           {/* Location */}
           {address && (
@@ -246,7 +319,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           )}
 
           {/* Operating Hours */}
-          {post.businessInfo?.operatingHours && (
+          {post.businessInfo?.operatingHours && Object.keys(post.businessInfo.operatingHours).length > 0 && (
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -257,16 +330,21 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
               <div>
                 <p className="text-xs text-gray-400">운영시간</p>
                 <div className="mt-1 space-y-0.5">
-                  {Object.entries(post.businessInfo.operatingHours).map(([day, hours]) => (
-                    <div key={day} className="flex items-center gap-2 text-sm">
-                      <span className="text-gray-400 w-4">{DAY_LABELS[day] ?? day}</span>
-                      {hours.closed ? (
-                        <span className="text-gray-300">휴무</span>
-                      ) : (
-                        <span className="text-gray-900">{hours.open} - {hours.close}</span>
-                      )}
-                    </div>
-                  ))}
+                  {Object.entries(post.businessInfo.operatingHours).map(([day, hours]) => {
+                    const label = DAY_LABELS[day] ?? day.slice(0, 2);
+                    return (
+                      <div key={day} className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-400 w-6">{label}</span>
+                        {hours.closed ? (
+                          <span className="text-gray-300">휴무</span>
+                        ) : (
+                          <span className="text-gray-900">
+                            {hours.open ?? '-'} - {hours.close ?? '-'}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -313,35 +391,46 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Description */}
-        <div className="mt-6 pt-6 border-t border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900 mb-3">소개</h2>
-          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-            {post.content}
-          </p>
-        </div>
+        {post.content && (
+          <div className="mt-6 pt-6 border-t border-gray-100">
+            <h2 className="text-base font-semibold text-gray-900 mb-3">소개</h2>
+            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+              {post.content}
+            </p>
+          </div>
+        )}
 
         {/* Author */}
-        <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-            {post.profileImgUrl ? (
-              <img src={post.profileImgUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm font-medium">
-                {post.nickname?.charAt(0) ?? '?'}
-              </div>
-            )}
+        {post.nickname && (
+          <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+              {post.profileImgUrl ? (
+                <img src={post.profileImgUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm font-medium">
+                  {post.nickname.charAt(0)}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">{post.nickname}</p>
+              <p className="text-xs text-gray-400">{formatDate(post.createdTimeAt)} 작성</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900">{post.nickname}</p>
-            <p className="text-xs text-gray-400">{formatDate(post.createdTimeAt)} 작성</p>
-          </div>
-        </div>
+        )}
 
         {/* Comments */}
         <div className="mt-6 pt-6 border-t border-gray-100">
           <CommentSection postId={postId} />
         </div>
       </div>
+
+      {/* Share Toast */}
+      {shareToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-sm px-5 py-2.5 rounded-full shadow-lg animate-fade-in z-50">
+          링크가 복사되었습니다
+        </div>
+      )}
     </div>
   );
 }
