@@ -32,8 +32,8 @@ export default function LoginPage() {
         password,
       });
 
-      if (res.result?.token) {
-        localStorage.setItem('token', res.result.token);
+      if (res.result) {
+        localStorage.setItem('token', res.result);
         router.push('/');
       }
     } catch {

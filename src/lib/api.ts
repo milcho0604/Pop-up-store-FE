@@ -1,8 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface ApiResponse<T> {
-  httpStatus: string;
-  message: string;
+  status_code: number;
+  status_message: string;
   result: T;
 }
 
