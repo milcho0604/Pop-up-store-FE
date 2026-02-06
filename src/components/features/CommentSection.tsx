@@ -26,6 +26,9 @@ export default function CommentSection({ postId }: CommentSectionProps) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [replySubmitting, setReplySubmitting] = useState(false);
 
   const fetchComments = async () => {
     try {
@@ -42,6 +45,10 @@ export default function CommentSection({ postId }: CommentSectionProps) {
     fetchComments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
+
+  const rootComments = comments.filter((c) => c.parentId === null);
+  const getReplies = (parentId: number) =>
+    comments.filter((c) => c.parentId === parentId);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,6 +72,32 @@ export default function CommentSection({ postId }: CommentSectionProps) {
     }
   };
 
+  const handleReplySubmit = async (e: FormEvent, parentId: number) => {
+    e.preventDefault();
+    if (!replyContent.trim()) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    setReplySubmitting(true);
+    try {
+      await commentApi.reply(
+        { postId, parentId, content: replyContent.trim() },
+        token
+      );
+      setReplyContent('');
+      setReplyingTo(null);
+      await fetchComments();
+    } catch {
+      alert('답글 작성에 실패했습니다.');
+    } finally {
+      setReplySubmitting(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -76,6 +109,62 @@ export default function CommentSection({ postId }: CommentSectionProps) {
       alert('댓글 삭제에 실패했습니다.');
     }
   };
+
+  const toggleReply = (commentId: number) => {
+    if (replyingTo === commentId) {
+      setReplyingTo(null);
+      setReplyContent('');
+    } else {
+      setReplyingTo(commentId);
+      setReplyContent('');
+    }
+  };
+
+  const renderComment = (c: CommentDto, isReply = false) => (
+    <div key={c.id} className={`flex gap-3 ${isReply ? 'ml-10' : ''}`}>
+      <div
+        className={`rounded-full bg-gray-200 flex-shrink-0 overflow-hidden ${
+          isReply ? 'w-6 h-6' : 'w-8 h-8'
+        }`}
+      >
+        {c.profileImg ? (
+          <img src={c.profileImg} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
+            {c.nickName?.charAt(0) ?? '?'}
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={`font-medium text-gray-900 ${isReply ? 'text-xs' : 'text-sm'}`}>
+            {c.nickName}
+          </span>
+          <span className="text-xs text-gray-300">{timeAgo(c.createdTimeAt)}</span>
+        </div>
+        <p className={`text-gray-600 mt-0.5 break-words ${isReply ? 'text-xs' : 'text-sm'}`}>
+          {c.content}
+        </p>
+        {!isReply && (
+          <button
+            onClick={() => toggleReply(c.id)}
+            className="text-xs text-gray-400 hover:text-gray-600 mt-1 transition-colors"
+          >
+            {replyingTo === c.id ? '취소' : '답글'}
+          </button>
+        )}
+      </div>
+      <button
+        onClick={() => handleDelete(c.id)}
+        className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 self-start mt-1"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+  );
 
   return (
     <div>
@@ -119,33 +208,39 @@ export default function CommentSection({ postId }: CommentSectionProps) {
         </p>
       ) : (
         <div className="space-y-5">
-          {comments.map((c) => (
-            <div key={c.id} className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
-                {c.profileImg ? (
-                  <img src={c.profileImg} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
-                    {c.nickName?.charAt(0) ?? '?'}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900">{c.nickName}</span>
-                  <span className="text-xs text-gray-300">{timeAgo(c.createdTimeAt)}</span>
+          {rootComments.map((c) => (
+            <div key={c.id}>
+              {renderComment(c)}
+
+              {/* Reply Input */}
+              {replyingTo === c.id && (
+                <form
+                  onSubmit={(e) => handleReplySubmit(e, c.id)}
+                  className="flex gap-2 ml-10 mt-3"
+                >
+                  <input
+                    value={replyContent}
+                    onChange={(e) => setReplyContent(e.target.value)}
+                    placeholder={`${c.nickName}님에게 답글 남기기`}
+                    autoFocus
+                    className="flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                  />
+                  <button
+                    type="submit"
+                    disabled={replySubmitting || !replyContent.trim()}
+                    className="px-3 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex-shrink-0"
+                  >
+                    {replySubmitting ? '...' : '등록'}
+                  </button>
+                </form>
+              )}
+
+              {/* Replies */}
+              {getReplies(c.id).length > 0 && (
+                <div className="space-y-3 mt-3">
+                  {getReplies(c.id).map((reply) => renderComment(reply, true))}
                 </div>
-                <p className="text-sm text-gray-600 mt-0.5 break-words">{c.content}</p>
-              </div>
-              <button
-                onClick={() => handleDelete(c.id)}
-                className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 self-start mt-1"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+              )}
             </div>
           ))}
         </div>
