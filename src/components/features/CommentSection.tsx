@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { CommentDto } from '@/types/comment';
 import { commentApi } from '@/lib/comment';
+import LoginPrompt from '@/components/ui/LoginPrompt';
 
 interface CommentSectionProps {
   postId: number;
@@ -29,6 +30,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [replySubmitting, setReplySubmitting] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   const fetchComments = async () => {
     try {
@@ -56,7 +58,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
 
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('로그인이 필요합니다.');
+      setShowLogin(true);
       return;
     }
 
@@ -78,7 +80,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
 
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('로그인이 필요합니다.');
+      setShowLogin(true);
       return;
     }
 
@@ -245,6 +247,8 @@ export default function CommentSection({ postId }: CommentSectionProps) {
           ))}
         </div>
       )}
+
+      <LoginPrompt open={showLogin} onClose={() => setShowLogin(false)} />
     </div>
   );
 }

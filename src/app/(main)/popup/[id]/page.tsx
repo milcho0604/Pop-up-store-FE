@@ -9,6 +9,7 @@ import { favoriteApi } from '@/lib/favorite';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DefaultImage from '@/components/ui/DefaultImage';
 import CommentSection from '@/components/features/CommentSection';
+import LoginPrompt from '@/components/ui/LoginPrompt';
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '';
@@ -39,6 +40,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [likeCount, setLikeCount] = useState(0);
   const [favorited, setFavorited] = useState(false);
   const [shareToast, setShareToast] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -99,7 +101,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleLike = async () => {
     const token = getToken();
-    if (!token) { alert('로그인이 필요합니다.'); return; }
+    if (!token) { setShowLogin(true); return; }
 
     try {
       if (liked) {
@@ -118,7 +120,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleFavorite = async () => {
     const token = getToken();
-    if (!token) { alert('로그인이 필요합니다.'); return; }
+    if (!token) { setShowLogin(true); return; }
 
     try {
       if (favorited) {
@@ -424,6 +426,8 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
           <CommentSection postId={postId} />
         </div>
       </div>
+
+      <LoginPrompt open={showLogin} onClose={() => setShowLogin(false)} />
 
       {/* Share Toast */}
       {shareToast && (
