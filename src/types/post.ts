@@ -46,6 +46,16 @@ export interface BusinessInfoDto {
   updatedAt: string;
 }
 
+export interface SearchFilterReqDto {
+  keyword?: string;
+  categories?: string[];
+  statuses?: string[];
+  city?: string;
+  startDate?: string;
+  endDate?: string;
+  sortBy?: 'LATEST' | 'POPULAR' | 'VIEW_COUNT' | 'ENDING_SOON';
+}
+
 export interface PostDetailDto {
   id: number;
   memberEmail: string;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { PostListDto } from '@/types/post';
 import { postApi } from '@/lib/post';
 import PopupCard from '@/components/features/PopupCard';
@@ -10,10 +11,19 @@ import PopupCarousel from '@/components/features/PopupCarousel';
 type SortType = 'views' | 'likes';
 
 export default function HomePage() {
+  const router = useRouter();
   const [allPosts, setAllPosts] = useState<PostListDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [sort, setSort] = useState<SortType>('views');
+  const [keyword, setKeyword] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = keyword.trim();
+    if (!trimmed) return;
+    router.push(`/search?keyword=${encodeURIComponent(trimmed)}`);
+  };
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -50,6 +60,26 @@ export default function HomePage() {
         <p className="text-sm text-gray-400 mt-2">
           가장 인기있는 팝업스토어를 만나보세요
         </p>
+
+        {/* 검색바 */}
+        <form onSubmit={handleSearch} className="mt-4">
+          <div className="relative">
+            <svg
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300"
+              width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="팝업스토어를 검색해보세요"
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"
+            />
+          </div>
+        </form>
       </section>
 
       {/* Popular Section */}

@@ -1,5 +1,5 @@
 import { api, ApiResponse } from './api';
-import { PostListDto, PostDetailDto } from '@/types/post';
+import { PostListDto, PostDetailDto, SearchFilterReqDto } from '@/types/post';
 
 export const postApi = {
   getPopularList: () =>
@@ -22,4 +22,7 @@ export const postApi = {
 
   getLikes: (id: number) =>
     api.get<ApiResponse<number>>(`/post/detail/${id}/likes`),
+
+  searchAll: (filter: SearchFilterReqDto) =>
+    api.post<ApiResponse<PostListDto[]>>('/post/search/all', filter),
 };
