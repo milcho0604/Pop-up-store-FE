@@ -9,6 +9,14 @@ import PopupCard from '@/components/features/PopupCard';
 import PopupCarousel from '@/components/features/PopupCarousel';
 
 type SortType = 'views' | 'likes';
+type StatusFilter = 'ALL' | 'ONGOING' | 'UPCOMING' | 'ENDED';
+
+const statusFilters: { value: StatusFilter; label: string }[] = [
+  { value: 'ALL', label: '전체' },
+  { value: 'ONGOING', label: '운영중' },
+  { value: 'UPCOMING', label: '오픈 예정' },
+  { value: 'ENDED', label: '종료' },
+];
 
 export default function HomePage() {
   const router = useRouter();
@@ -16,6 +24,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [sort, setSort] = useState<SortType>('views');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [keyword, setKeyword] = useState('');
 
   const handleSearch = (e: React.FormEvent) => {
@@ -39,14 +48,19 @@ export default function HomePage() {
     fetchPosts();
   }, []);
 
+  const filteredPosts = useMemo(() => {
+    if (statusFilter === 'ALL') return allPosts;
+    return allPosts.filter((post) => post.status === statusFilter);
+  }, [allPosts, statusFilter]);
+
   const popularPosts = useMemo(() => {
-    const sorted = [...allPosts].sort((a, b) =>
+    const sorted = [...filteredPosts].sort((a, b) =>
       sort === 'views'
         ? (b.viewCount ?? 0) - (a.viewCount ?? 0)
         : (b.likeCount ?? 0) - (a.likeCount ?? 0)
     );
     return sorted.slice(0, 10);
-  }, [allPosts, sort]);
+  }, [filteredPosts, sort]);
 
   return (
     <div className="px-5 pt-4">
@@ -80,6 +94,23 @@ export default function HomePage() {
             />
           </div>
         </form>
+
+        {/* 상태 필터 */}
+        <div className="flex gap-2 mt-4">
+          {statusFilters.map((filter) => (
+            <button
+              key={filter.value}
+              onClick={() => setStatusFilter(filter.value)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                statusFilter === filter.value
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-100 text-gray-400'
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Popular Section */}
@@ -163,7 +194,9 @@ export default function HomePage() {
               </svg>
             </div>
             <p className="text-sm text-gray-400">
-              아직 등록된 팝업스토어가 없습니다
+              {statusFilter === 'ALL'
+                ? '아직 등록된 팝업스토어가 없습니다'
+                : `${statusFilters.find((f) => f.value === statusFilter)?.label} 팝업스토어가 없습니다`}
             </p>
           </div>
         )}
