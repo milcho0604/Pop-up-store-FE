@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PostListDto } from '@/types/post';
 import { postApi } from '@/lib/post';
+import { isAdmin } from '@/lib/auth';
 import PopupCard from '@/components/features/PopupCard';
 import PopupCarousel from '@/components/features/PopupCarousel';
 
@@ -26,6 +27,12 @@ export default function HomePage() {
   const [sort, setSort] = useState<SortType>('views');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [keyword, setKeyword] = useState('');
+  const [admin, setAdmin] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setAdmin(isAdmin(token));
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,9 +78,23 @@ export default function HomePage() {
           <br />
           <span className="text-gray-400">팝업스토어</span>
         </h1>
-        <p className="text-sm text-gray-400 mt-2">
-          가장 인기있는 팝업스토어를 만나보세요
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-sm text-gray-400">
+            가장 인기있는 팝업스토어를 만나보세요
+          </p>
+          {admin && (
+            <Link
+              href="/popup/create"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-full hover:bg-gray-800 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              팝업 등록
+            </Link>
+          )}
+        </div>
 
         {/* 검색바 */}
         <form onSubmit={handleSearch} className="mt-4">

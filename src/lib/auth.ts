@@ -4,6 +4,21 @@ import { SignupRequest } from '@/types/member';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
+// JWT 토큰에서 role 추출
+export function getTokenRole(token: string): string | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function isAdmin(token: string | null): boolean {
+  if (!token) return false;
+  return getTokenRole(token) === 'ROLE_ADMIN';
+}
+
 export const authApi = {
   login: (data: LoginRequest) =>
     api.post<ApiResponse<string>>('/member/login', data),

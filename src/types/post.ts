@@ -56,6 +56,21 @@ export interface SearchFilterReqDto {
   sortBy?: 'LATEST' | 'POPULAR' | 'VIEW_COUNT' | 'ENDING_SOON';
 }
 
+export interface PostCreateReqDto {
+  memberEmail: string;
+  title: string;
+  content: string;
+  startDate: string;
+  endDate: string;
+  city?: string;
+  dong?: string;
+  street?: string;
+  zipcode?: string;
+  detailAddress?: string;
+  category?: string;
+  tagNames?: string[];
+}
+
 export interface PostDetailDto {
   id: number;
   memberEmail: string;
