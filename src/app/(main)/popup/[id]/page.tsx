@@ -9,6 +9,7 @@ import { favoriteApi } from '@/lib/favorite';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DefaultImage from '@/components/ui/DefaultImage';
 import CommentSection from '@/components/features/CommentSection';
+import ReviewSection from '@/components/features/ReviewSection';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 
 function formatDate(dateStr: string | null | undefined) {
@@ -420,6 +421,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
         )}
+
+        {/* Reviews */}
+        <div className="mt-6 pt-6 border-t border-gray-100">
+          <ReviewSection postId={postId} />
+        </div>
 
         {/* Comments */}
         <div className="mt-6 pt-6 border-t border-gray-100">
