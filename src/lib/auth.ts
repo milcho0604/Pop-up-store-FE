@@ -48,4 +48,12 @@ export const authApi = {
     if (!res.ok) throw new Error('회원가입 실패');
     return res.json();
   },
+
+  // 비밀번호 재설정 링크 전송
+  findPassword: (memberEmail: string) =>
+    api.post<ApiResponse<null>>('/member/find/password', { memberEmail }),
+
+  // 비밀번호 재설정
+  resetPassword: (token: string, newPassword: string, confirmPassword: string) =>
+    api.post<ApiResponse<null>>('/member/reset/password', { token, newPassword, confirmPassword }),
 };
