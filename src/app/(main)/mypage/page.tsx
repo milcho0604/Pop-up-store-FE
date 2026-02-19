@@ -8,11 +8,13 @@ import { memberApi } from '@/lib/member';
 import { followApi } from '@/lib/follow';
 import { favoriteApi } from '@/lib/favorite';
 import { informationApi } from '@/lib/information';
+import { postApi } from '@/lib/post';
 import { MemberProfileResDto, FavoriteResDto, InformationListDto, FollowStatsDto } from '@/types/member';
+import { PostListDto } from '@/types/post';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 import DefaultImage from '@/components/ui/DefaultImage';
 
-type TabType = 'favorites' | 'reports';
+type TabType = 'favorites' | 'myPosts' | 'reports';
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   PENDING: { text: '대기', color: 'bg-yellow-100 text-yellow-700' },
@@ -33,6 +35,7 @@ export default function MyPage() {
   const [profile, setProfile] = useState<MemberProfileResDto | null>(null);
   const [followStats, setFollowStats] = useState<FollowStatsDto | null>(null);
   const [favorites, setFavorites] = useState<FavoriteResDto[]>([]);
+  const [myPosts, setMyPosts] = useState<PostListDto[]>([]);
   const [reports, setReports] = useState<InformationListDto[]>([]);
   const [tab, setTab] = useState<TabType>('favorites');
   const [loading, setLoading] = useState(true);
@@ -103,6 +106,9 @@ export default function MyPage() {
         if (tab === 'favorites' && favorites.length === 0) {
           const res = await favoriteApi.getMyList(token);
           setFavorites(res.result ?? []);
+        } else if (tab === 'myPosts' && myPosts.length === 0) {
+          const res = await postApi.getMyList(token);
+          setMyPosts(res.result ?? []);
         } else if (tab === 'reports' && reports.length === 0) {
           const res = await informationApi.getMyList(token);
           setReports(res.result ?? []);
@@ -200,23 +206,29 @@ export default function MyPage() {
 
             {/* 팔로우 통계 */}
             <div className="flex gap-6 mb-5">
-              <div className="text-center">
+              <Link href="/mypage/follows?tab=followers" className="text-center">
                 <p className="text-base font-bold text-gray-900">{followStats?.followerCount ?? 0}</p>
                 <p className="text-xs text-gray-400">팔로워</p>
-              </div>
-              <div className="text-center">
+              </Link>
+              <Link href="/mypage/follows?tab=followings" className="text-center">
                 <p className="text-base font-bold text-gray-900">{followStats?.followingCount ?? 0}</p>
                 <p className="text-xs text-gray-400">팔로잉</p>
-              </div>
+              </Link>
             </div>
 
             {/* 버튼 */}
-            <div className="flex gap-2 mb-8">
+            <div className="flex gap-2 mb-5">
               <Link
                 href="/mypage/edit"
                 className="flex-1 py-2.5 text-center text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
               >
                 프로필 수정
+              </Link>
+              <Link
+                href="/report"
+                className="flex-1 py-2.5 text-center text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                팝업 제보
               </Link>
               <button
                 onClick={handleLogout}
@@ -228,22 +240,21 @@ export default function MyPage() {
 
             {/* 탭 */}
             <div className="flex gap-2 mb-5">
-              <button
-                onClick={() => setTab('favorites')}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  tab === 'favorites' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'
-                }`}
-              >
-                즐겨찾기
-              </button>
-              <button
-                onClick={() => setTab('reports')}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  tab === 'reports' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'
-                }`}
-              >
-                내 제보
-              </button>
+              {([
+                { key: 'favorites' as const, label: '즐겨찾기' },
+                { key: 'myPosts' as const, label: '내 게시글' },
+                { key: 'reports' as const, label: '내 제보' },
+              ]).map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    tab === t.key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
 
             {/* 탭 로딩 */}
@@ -278,6 +289,45 @@ export default function MyPage() {
                   <div className="space-y-5">
                     {favorites.map((fav) => (
                       <FavoriteCard key={fav.favoriteId} favorite={fav} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 내 게시글 탭 */}
+            {!tabLoading && tab === 'myPosts' && (
+              <>
+                {myPosts.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-50 mb-4">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-400">작성한 게시글이 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    {myPosts.map((post) => (
+                      <FavoriteCard
+                        key={post.id}
+                        favorite={{
+                          favoriteId: post.id,
+                          postId: post.id,
+                          postTitle: post.title,
+                          postContent: post.content,
+                          postImgUrl: post.postImgUrl,
+                          category: post.category,
+                          startDate: post.startDate,
+                          endDate: post.endDate,
+                          city: post.city,
+                          street: post.street,
+                          zipcode: post.zipcode,
+                          favoritedAt: post.createdTimeAt,
+                        }}
+                      />
                     ))}
                   </div>
                 )}

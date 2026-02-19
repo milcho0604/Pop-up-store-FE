@@ -79,3 +79,12 @@ export interface FollowStatsDto {
   followerCount: number;
   followingCount: number;
 }
+
+export interface FollowDto {
+  followId: number;
+  memberId: number;
+  memberEmail: string;
+  memberNickname: string;
+  profileImgUrl: string;
+  followedAt: string;
+}

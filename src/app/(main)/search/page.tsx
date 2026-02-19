@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { PostListDto } from '@/types/post';
+import { PostListDto, TagDto } from '@/types/post';
 import { postApi } from '@/lib/post';
+import { tagApi } from '@/lib/tag';
 import PopupCard from '@/components/features/PopupCard';
 
 type SortType = 'LATEST' | 'POPULAR' | 'VIEW_COUNT' | 'ENDING_SOON';
@@ -25,8 +26,14 @@ function SearchContent() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [sort, setSort] = useState<SortType>('LATEST');
+  const [popularTags, setPopularTags] = useState<TagDto[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  const doSearch = useCallback(async (query: string, sortBy: SortType) => {
+  useEffect(() => {
+    tagApi.getPopular(15).then((res) => setPopularTags(res.result ?? [])).catch(() => {});
+  }, []);
+
+  const doSearch = useCallback(async (query: string, sortBy: SortType, categories?: string[]) => {
     setLoading(true);
     setSearched(true);
     try {
@@ -157,14 +164,32 @@ function SearchContent() {
 
       {/* 초기 상태 (검색 전) */}
       {!loading && !searched && (
-        <div className="text-center py-20">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-50 mb-4">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
+        <div>
+          {popularTags.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">인기 태그</h3>
+              <div className="flex flex-wrap gap-2">
+                {popularTags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    onClick={() => { setKeyword(tag.name); doSearch(tag.name, sort); }}
+                    className="px-3 py-1.5 bg-gray-50 rounded-full text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    #{tag.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="text-center py-12">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-50 mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </div>
+            <p className="text-sm text-gray-400">찾고 싶은 팝업스토어를 검색해보세요</p>
           </div>
-          <p className="text-sm text-gray-400">찾고 싶은 팝업스토어를 검색해보세요</p>
         </div>
       )}
     </div>

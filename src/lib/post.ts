@@ -36,6 +36,14 @@ export const postApi = {
   searchAll: (filter: SearchFilterReqDto) =>
     api.post<ApiResponse<PostListDto[]>>('/post/search/all', filter),
 
+  // 내가 작성한 팝업 목록
+  getMyList: (token: string) =>
+    api.withAuth(token).get<ApiResponse<PostListDto[]>>('/post/my/list'),
+
+  // 도시별 팝업 목록
+  getListByCity: (city: string) =>
+    api.get<ApiResponse<PostListDto[]>>(`/post/list/city?city=${encodeURIComponent(city)}`),
+
   // 팝업 등록 (ADMIN)
   create: async (token: string, data: PostCreateReqDto, postImage?: File) => {
     const formData = new FormData();
