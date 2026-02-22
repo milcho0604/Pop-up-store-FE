@@ -11,6 +11,11 @@ export const commentApi = {
   reply: (data: ReplyCreateRequest, token: string) =>
     api.withAuth(token).post<ApiResponse<CommentDto>>('/comment/reply', data),
 
+  // 댓글 수정
+  update: (data: { id: number; postId: number; content: string }, token: string) =>
+    api.withAuth(token).post<ApiResponse<null>>('/comment/update', data),
+
+  // 댓글 삭제
   delete: (id: number, token: string) =>
-    api.withAuth(token).delete<ApiResponse<null>>(`/comment/delete/${id}`),
+    api.withAuth(token).post<ApiResponse<null>>(`/comment/delete/${id}`),
 };

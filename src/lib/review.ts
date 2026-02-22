@@ -8,6 +8,10 @@ export const reviewApi = {
   getList: (postId: number) =>
     api.get<ApiResponse<ReviewResDto[]>>(`/review/post/${postId}/all`),
 
+  // 내 리뷰 전체 조회
+  getMyList: (token: string) =>
+    api.withAuth(token).get<ApiResponse<ReviewResDto[]>>('/review/my/list/all'),
+
   // 리뷰 작성
   create: async (
     postId: number,

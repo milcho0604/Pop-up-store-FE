@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, FormEvent } from 'react';
 import Image from 'next/image';
 import { ReviewResDto, ReviewCreateReqDto } from '@/types/review';
 import { reviewApi } from '@/lib/review';
+import { getTokenMemberId } from '@/lib/auth';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 
 interface ReviewSectionProps {
@@ -73,6 +74,7 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
   const [submitting, setSubmitting] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [currentMemberId, setCurrentMemberId] = useState<number | null>(null);
 
   // 폼 상태
   const [content, setContent] = useState('');
@@ -81,6 +83,11 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
   const [photoAvailability, setPhotoAvailability] = useState(0);
   const [reviewImage, setReviewImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) setCurrentMemberId(getTokenMemberId(token));
+  }, []);
 
   const fetchReviews = async () => {
     try {
@@ -287,7 +294,7 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
       ) : (
         <div className="space-y-5">
           {reviews.map((review) => (
-            <ReviewItem key={review.reviewId} review={review} onDelete={handleDelete} />
+            <ReviewItem key={review.reviewId} review={review} onDelete={handleDelete} currentMemberId={currentMemberId} />
           ))}
         </div>
       )}
@@ -300,11 +307,14 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
 function ReviewItem({
   review,
   onDelete,
+  currentMemberId,
 }: {
   review: ReviewResDto;
   onDelete: (id: number) => void;
+  currentMemberId: number | null;
 }) {
   const [imgError, setImgError] = useState(false);
+  const isOwner = currentMemberId !== null && review.memberId === currentMemberId;
 
   return (
     <div className="flex gap-3">
@@ -351,16 +361,18 @@ function ReviewItem({
         )}
       </div>
 
-      {/* 삭제 */}
-      <button
-        onClick={() => onDelete(review.reviewId)}
-        className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 self-start mt-1"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
+      {/* 삭제 (본인만) */}
+      {isOwner && (
+        <button
+          onClick={() => onDelete(review.reviewId)}
+          className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 self-start mt-1"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

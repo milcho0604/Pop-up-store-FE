@@ -4,14 +4,29 @@ import { SignupRequest } from '@/types/member';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// JWT 토큰에서 role 추출
-export function getTokenRole(token: string): string | null {
+// JWT 토큰 페이로드 파싱
+function parseTokenPayload(token: string): Record<string, unknown> | null {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.role ?? null;
+    return JSON.parse(atob(token.split('.')[1]));
   } catch {
     return null;
   }
+}
+
+// JWT 토큰에서 role 추출
+export function getTokenRole(token: string): string | null {
+  return (parseTokenPayload(token)?.role as string) ?? null;
+}
+
+// JWT 토큰에서 email(sub) 추출
+export function getTokenEmail(token: string): string | null {
+  return (parseTokenPayload(token)?.sub as string) ?? null;
+}
+
+// JWT 토큰에서 memberId 추출
+export function getTokenMemberId(token: string): number | null {
+  const payload = parseTokenPayload(token);
+  return typeof payload?.memberId === 'number' ? payload.memberId : null;
 }
 
 export function isAdmin(token: string | null): boolean {

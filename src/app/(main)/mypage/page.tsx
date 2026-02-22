@@ -9,12 +9,14 @@ import { followApi } from '@/lib/follow';
 import { favoriteApi } from '@/lib/favorite';
 import { informationApi } from '@/lib/information';
 import { postApi } from '@/lib/post';
+import { reviewApi } from '@/lib/review';
 import { MemberProfileResDto, FavoriteResDto, InformationListDto, FollowStatsDto } from '@/types/member';
 import { PostListDto } from '@/types/post';
+import { ReviewResDto } from '@/types/review';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 import DefaultImage from '@/components/ui/DefaultImage';
 
-type TabType = 'favorites' | 'myPosts' | 'reports';
+type TabType = 'favorites' | 'myPosts' | 'myReviews' | 'reports';
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   PENDING: { text: '대기', color: 'bg-yellow-100 text-yellow-700' },
@@ -36,6 +38,7 @@ export default function MyPage() {
   const [followStats, setFollowStats] = useState<FollowStatsDto | null>(null);
   const [favorites, setFavorites] = useState<FavoriteResDto[]>([]);
   const [myPosts, setMyPosts] = useState<PostListDto[]>([]);
+  const [myReviews, setMyReviews] = useState<ReviewResDto[]>([]);
   const [reports, setReports] = useState<InformationListDto[]>([]);
   const [tab, setTab] = useState<TabType>('favorites');
   const [loading, setLoading] = useState(true);
@@ -109,6 +112,9 @@ export default function MyPage() {
         } else if (tab === 'myPosts' && myPosts.length === 0) {
           const res = await postApi.getMyList(token);
           setMyPosts(res.result ?? []);
+        } else if (tab === 'myReviews' && myReviews.length === 0) {
+          const res = await reviewApi.getMyList(token);
+          setMyReviews(res.result ?? []);
         } else if (tab === 'reports' && reports.length === 0) {
           const res = await informationApi.getMyList(token);
           setReports(res.result ?? []);
@@ -243,6 +249,7 @@ export default function MyPage() {
               {([
                 { key: 'favorites' as const, label: '즐겨찾기' },
                 { key: 'myPosts' as const, label: '내 게시글' },
+                { key: 'myReviews' as const, label: '내 리뷰' },
                 { key: 'reports' as const, label: '내 제보' },
               ]).map((t) => (
                 <button
@@ -328,6 +335,40 @@ export default function MyPage() {
                           favoritedAt: post.createdTimeAt,
                         }}
                       />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 내 리뷰 탭 */}
+            {!tabLoading && tab === 'myReviews' && (
+              <>
+                {myReviews.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-50 mb-4">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-400">작성한 리뷰가 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {myReviews.map((review) => (
+                      <Link key={review.reviewId} href={`/popup/${review.postId}`} className="block p-4 bg-gray-50 rounded-2xl">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-gray-900 truncate">{review.postTitle}</span>
+                          <span className="text-xs text-yellow-500 font-medium flex-shrink-0 ml-2">★ {review.rating.toFixed(1)}</span>
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-2">{review.content}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[10px] text-gray-300">
+                            만족 {review.satisfaction} · 대기 {review.waitingTime} · 포토 {review.photoAvailability}
+                          </span>
+                          <span className="text-[10px] text-gray-300">{formatDate(review.createdAt)}</span>
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 )}

@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { CommentDto } from '@/types/comment';
 import { commentApi } from '@/lib/comment';
+import { getTokenEmail } from '@/lib/auth';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 
 interface CommentSectionProps {
@@ -30,7 +31,16 @@ export default function CommentSection({ postId }: CommentSectionProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [replySubmitting, setReplySubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) setCurrentEmail(getTokenEmail(token));
+  }, []);
 
   const fetchComments = async () => {
     try {
@@ -100,6 +110,37 @@ export default function CommentSection({ postId }: CommentSectionProps) {
     }
   };
 
+  const handleEdit = (c: CommentDto) => {
+    setEditingId(c.id);
+    setEditContent(c.content);
+    setReplyingTo(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditContent('');
+  };
+
+  const handleEditSubmit = async (e: FormEvent, commentId: number) => {
+    e.preventDefault();
+    if (!editContent.trim()) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    setEditSubmitting(true);
+    try {
+      await commentApi.update({ id: commentId, postId, content: editContent.trim() }, token);
+      setEditingId(null);
+      setEditContent('');
+      await fetchComments();
+    } catch {
+      alert('댓글 수정에 실패했습니다.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -119,54 +160,105 @@ export default function CommentSection({ postId }: CommentSectionProps) {
     } else {
       setReplyingTo(commentId);
       setReplyContent('');
+      setEditingId(null);
     }
   };
 
-  const renderComment = (c: CommentDto, isReply = false) => (
-    <div key={c.id} className={`flex gap-3 ${isReply ? 'ml-10' : ''}`}>
-      <div
-        className={`rounded-full bg-gray-200 flex-shrink-0 overflow-hidden ${
-          isReply ? 'w-6 h-6' : 'w-8 h-8'
-        }`}
-      >
-        {c.profileImg ? (
-          <img src={c.profileImg} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
-            {c.nickName?.charAt(0) ?? '?'}
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className={`font-medium text-gray-900 ${isReply ? 'text-xs' : 'text-sm'}`}>
-            {c.nickName}
-          </span>
-          <span className="text-xs text-gray-300">{timeAgo(c.createdTimeAt)}</span>
+  const renderComment = (c: CommentDto, isReply = false) => {
+    const isEditing = editingId === c.id;
+    const isOwner = currentEmail !== null && c.doctorEmail === currentEmail;
+
+    return (
+      <div key={c.id} className={`flex gap-3 ${isReply ? 'ml-10' : ''}`}>
+        <div
+          className={`rounded-full bg-gray-200 flex-shrink-0 overflow-hidden ${
+            isReply ? 'w-6 h-6' : 'w-8 h-8'
+          }`}
+        >
+          {c.profileImg ? (
+            <img src={c.profileImg} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
+              {c.nickName?.charAt(0) ?? '?'}
+            </div>
+          )}
         </div>
-        <p className={`text-gray-600 mt-0.5 break-words ${isReply ? 'text-xs' : 'text-sm'}`}>
-          {c.content}
-        </p>
-        {!isReply && (
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`font-medium text-gray-900 ${isReply ? 'text-xs' : 'text-sm'}`}>
+              {c.nickName}
+            </span>
+            <span className="text-xs text-gray-300">{timeAgo(c.createdTimeAt)}</span>
+            {c.updatedTimeAt !== c.createdTimeAt && (
+              <span className="text-[10px] text-gray-300">(수정됨)</span>
+            )}
+          </div>
+
+          {isEditing ? (
+            <form onSubmit={(e) => handleEditSubmit(e, c.id)} className="mt-1.5">
+              <input
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                autoFocus
+                className={`w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all ${isReply ? 'text-xs' : 'text-sm'}`}
+              />
+              <div className="flex gap-1.5 mt-1.5">
+                <button
+                  type="submit"
+                  disabled={editSubmitting || !editContent.trim()}
+                  className="px-2.5 py-1 bg-gray-900 text-white text-xs font-medium rounded-lg disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
+                >
+                  {editSubmitting ? '...' : '저장'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEditCancel}
+                  className="px-2.5 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  취소
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <p className={`text-gray-600 mt-0.5 break-words ${isReply ? 'text-xs' : 'text-sm'}`}>
+                {c.content}
+              </p>
+              <div className="flex gap-2 mt-1">
+                {!isReply && (
+                  <button
+                    onClick={() => toggleReply(c.id)}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {replyingTo === c.id ? '취소' : '답글'}
+                  </button>
+                )}
+                {isOwner && (
+                  <button
+                    onClick={() => handleEdit(c)}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    수정
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {!isEditing && isOwner && (
           <button
-            onClick={() => toggleReply(c.id)}
-            className="text-xs text-gray-400 hover:text-gray-600 mt-1 transition-colors"
+            onClick={() => handleDelete(c.id)}
+            className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 self-start mt-1"
           >
-            {replyingTo === c.id ? '취소' : '답글'}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         )}
       </div>
-      <button
-        onClick={() => handleDelete(c.id)}
-        className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 self-start mt-1"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
-    </div>
-  );
+    );
+  };
 
   return (
     <div>
