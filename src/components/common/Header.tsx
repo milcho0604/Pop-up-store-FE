@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/ui/Logo';
 import LoginPrompt from '@/components/ui/LoginPrompt';
-import { notificationApi } from '@/lib/notification';
+import { useNotification } from '@/context/NotificationContext';
 
 interface HeaderProps {
   className?: string;
@@ -14,25 +14,7 @@ interface HeaderProps {
 export default function Header({ className = '' }: HeaderProps) {
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    const fetchCount = async () => {
-      try {
-        const res = await notificationApi.getCount(token);
-        setUnreadCount(res.result.unread);
-      } catch {
-        // 조용히 처리
-      }
-    };
-
-    fetchCount();
-    const interval = setInterval(fetchCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const { unreadCount } = useNotification();
 
   const handleNotification = (e: React.MouseEvent) => {
     e.preventDefault();

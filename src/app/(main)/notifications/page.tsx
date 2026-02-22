@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { notificationApi } from '@/lib/notification';
 import { NotificationDto, NotificationType } from '@/types/notification';
+import { useNotification } from '@/context/NotificationContext';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 
 function getTypeIcon(type: NotificationType) {
@@ -104,6 +105,7 @@ type FilterType = 'all' | 'unread' | 'read';
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const { decrementCount, resetCount } = useNotification();
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -180,6 +182,7 @@ export default function NotificationsPage() {
     try {
       await notificationApi.markAllAsRead(token);
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      resetCount();
     } catch {
       // 에러 시 조용히 처리
     }
@@ -195,6 +198,7 @@ export default function NotificationsPage() {
         setNotifications(prev =>
           prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n)
         );
+        decrementCount();
       } catch {
         // 에러 시 조용히 처리
       }

@@ -132,6 +132,7 @@ export default function MyPage() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    window.dispatchEvent(new CustomEvent('auth-change'));
     router.push('/');
   };
 

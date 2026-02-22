@@ -34,6 +34,7 @@ export default function LoginPage() {
 
       if (res.result) {
         localStorage.setItem('token', res.result);
+        window.dispatchEvent(new CustomEvent('auth-change'));
         router.push('/');
       }
     } catch {
