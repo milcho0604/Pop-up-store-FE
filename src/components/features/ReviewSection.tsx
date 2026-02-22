@@ -5,23 +5,11 @@ import Image from 'next/image';
 import { ReviewResDto, ReviewCreateReqDto } from '@/types/review';
 import { reviewApi } from '@/lib/review';
 import { getTokenMemberId } from '@/lib/auth';
+import { timeAgo } from '@/lib/time';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 
 interface ReviewSectionProps {
   postId: number;
-}
-
-function timeAgo(dateStr: string) {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '방금 전';
-  if (mins < 60) return `${mins}분 전`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}일 전`;
-  return new Date(dateStr).toLocaleDateString('ko-KR');
 }
 
 const ratingLabels = [
@@ -170,6 +158,18 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
     }
   };
 
+  const handleUpdate = async (
+    reviewId: number,
+    data: { content: string; satisfaction: number; waitingTime: number; photoAvailability: number },
+    image?: File,
+  ) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    await reviewApi.update(reviewId, data, token, image);
+    await fetchReviews();
+  };
+
   const handleToggleForm = () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -294,7 +294,7 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
       ) : (
         <div className="space-y-5">
           {reviews.map((review) => (
-            <ReviewItem key={review.reviewId} review={review} onDelete={handleDelete} currentMemberId={currentMemberId} />
+            <ReviewItem key={review.reviewId} review={review} onDelete={handleDelete} onUpdate={handleUpdate} currentMemberId={currentMemberId} />
           ))}
         </div>
       )}
@@ -307,14 +307,78 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
 function ReviewItem({
   review,
   onDelete,
+  onUpdate,
   currentMemberId,
 }: {
   review: ReviewResDto;
   onDelete: (id: number) => void;
+  onUpdate: (
+    id: number,
+    data: { content: string; satisfaction: number; waitingTime: number; photoAvailability: number },
+    image?: File,
+  ) => Promise<void>;
   currentMemberId: number | null;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [imgError, setImgError] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // 수정 폼 상태
+  const [editContent, setEditContent] = useState('');
+  const [editSatisfaction, setEditSatisfaction] = useState(0);
+  const [editWaitingTime, setEditWaitingTime] = useState(0);
+  const [editPhotoAvailability, setEditPhotoAvailability] = useState(0);
+  const [editImage, setEditImage] = useState<File | null>(null);
+  const [editPreviewUrl, setEditPreviewUrl] = useState<string | null>(null);
+
   const isOwner = currentMemberId !== null && review.memberId === currentMemberId;
+  const isModified = review.updatedAt && review.updatedAt !== review.createdAt;
+
+  const handleEditStart = () => {
+    setEditContent(review.content);
+    setEditSatisfaction(review.satisfaction);
+    setEditWaitingTime(review.waitingTime);
+    setEditPhotoAvailability(review.photoAvailability);
+    setEditImage(null);
+    setEditPreviewUrl(null);
+    setIsEditing(true);
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
+  };
+
+  const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEditImage(file);
+    setEditPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleEditSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editContent.trim()) return;
+
+    setEditSubmitting(true);
+    try {
+      await onUpdate(
+        review.reviewId,
+        {
+          content: editContent.trim(),
+          satisfaction: editSatisfaction,
+          waitingTime: editWaitingTime,
+          photoAvailability: editPhotoAvailability,
+        },
+        editImage ?? undefined,
+      );
+      setIsEditing(false);
+    } catch {
+      alert('리뷰 수정에 실패했습니다.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex gap-3">
@@ -334,35 +398,125 @@ function ReviewItem({
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-900">{review.memberNickname}</span>
           <span className="text-xs text-gray-300">{timeAgo(review.createdAt)}</span>
+          {isModified && <span className="text-[10px] text-gray-300">(수정됨)</span>}
         </div>
 
-        {/* 별점 */}
-        <div className="flex items-center gap-1 mt-1">
-          <span className="text-xs text-yellow-500 font-medium">★ {review.rating.toFixed(1)}</span>
-          <span className="text-[10px] text-gray-300">
-            만족 {review.satisfaction} · 대기 {review.waitingTime} · 포토 {review.photoAvailability}
-          </span>
-        </div>
+        {isEditing ? (
+          <form onSubmit={handleEditSubmit} className="mt-2 p-3 bg-gray-50 rounded-xl space-y-3">
+            {/* 별점 3종 */}
+            <div className="space-y-2">
+              {ratingLabels.map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">{label}</span>
+                  <StarRating
+                    value={key === 'satisfaction' ? editSatisfaction : key === 'waitingTime' ? editWaitingTime : editPhotoAvailability}
+                    onChange={(v) => {
+                      if (key === 'satisfaction') setEditSatisfaction(v);
+                      else if (key === 'waitingTime') setEditWaitingTime(v);
+                      else setEditPhotoAvailability(v);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
 
-        <p className="text-sm text-gray-600 mt-1.5 break-words">{review.content}</p>
-
-        {/* 리뷰 이미지 */}
-        {review.reviewImgUrl && !imgError && (
-          <div className="relative w-32 h-32 rounded-xl overflow-hidden mt-2">
-            <Image
-              src={review.reviewImgUrl}
-              alt="리뷰 이미지"
-              fill
-              className="object-cover"
-              onError={() => setImgError(true)}
-              sizes="128px"
+            {/* 내용 */}
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={3}
+              autoFocus
+              className="w-full px-3 py-2 bg-white rounded-lg text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
             />
-          </div>
+
+            {/* 이미지 */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg text-xs text-gray-500 hover:bg-gray-100 transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                사진 변경
+              </button>
+              {editPreviewUrl && (
+                <div className="relative w-10 h-10 rounded-lg overflow-hidden">
+                  <Image src={editPreviewUrl} alt="미리보기" fill className="object-cover" sizes="40px" />
+                  <button
+                    type="button"
+                    onClick={() => { setEditImage(null); setEditPreviewUrl(null); }}
+                    className="absolute top-0 right-0 bg-black/50 rounded-bl-lg p-0.5"
+                  >
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </div>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleEditImageSelect} className="hidden" />
+            </div>
+
+            {/* 버튼 */}
+            <div className="flex gap-1.5">
+              <button
+                type="submit"
+                disabled={editSubmitting || !editContent.trim()}
+                className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
+              >
+                {editSubmitting ? '...' : '저장'}
+              </button>
+              <button
+                type="button"
+                onClick={handleEditCancel}
+                className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {/* 별점 */}
+            <div className="flex items-center gap-1 mt-1">
+              <span className="text-xs text-yellow-500 font-medium">★ {review.rating.toFixed(1)}</span>
+              <span className="text-[10px] text-gray-300">
+                만족 {review.satisfaction} · 대기 {review.waitingTime} · 포토 {review.photoAvailability}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-600 mt-1.5 break-words">{review.content}</p>
+
+            {/* 리뷰 이미지 */}
+            {review.reviewImgUrl && !imgError && (
+              <div className="relative w-32 h-32 rounded-xl overflow-hidden mt-2">
+                <Image
+                  src={review.reviewImgUrl}
+                  alt="리뷰 이미지"
+                  fill
+                  className="object-cover"
+                  onError={() => setImgError(true)}
+                  sizes="128px"
+                />
+              </div>
+            )}
+
+            {/* 수정 버튼 (본인만) */}
+            {isOwner && (
+              <button
+                onClick={handleEditStart}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors mt-1"
+              >
+                수정
+              </button>
+            )}
+          </>
         )}
       </div>
 
-      {/* 삭제 (본인만) */}
-      {isOwner && (
+      {/* 삭제 (본인만, 수정 중 아닐 때) */}
+      {!isEditing && isOwner && (
         <button
           onClick={() => onDelete(review.reviewId)}
           className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 self-start mt-1"
