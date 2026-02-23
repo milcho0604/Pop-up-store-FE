@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PostDetailDto } from '@/types/post';
 import { postApi } from '@/lib/post';
 import { favoriteApi } from '@/lib/favorite';
+import { isAdmin } from '@/lib/auth';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DefaultImage from '@/components/ui/DefaultImage';
 import CommentSection from '@/components/features/CommentSection';
@@ -42,6 +43,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [favorited, setFavorited] = useState(false);
   const [shareToast, setShareToast] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [admin, setAdmin] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,6 +60,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         // 로그인 상태면 좋아요/즐겨찾기 상태 확인
         const token = localStorage.getItem('token');
         if (token) {
+          setAdmin(isAdmin(token));
           // 즐겨찾기 상태 확인
           try {
             const favRes = await favoriteApi.check(postId, token);
@@ -134,6 +137,18 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     } catch {
       // 이미 추가/삭제된 상태면 에러 → 상태 반전해서 보정
       setFavorited(!favorited);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('팝업스토어를 삭제하시겠습니까?')) return;
+    const token = getToken();
+    if (!token) return;
+    try {
+      await postApi.delete(postId, token);
+      router.replace('/');
+    } catch {
+      alert('삭제에 실패했습니다.');
     }
   };
 
@@ -228,10 +243,26 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       <div className="px-5 mt-5">
         {/* Title & Status */}
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="flex-1 min-w-0">
             <StatusBadge status={post.status} className="mb-2" />
             <h1 className="text-xl font-bold text-gray-900">{post.title}</h1>
           </div>
+          {admin && (
+            <div className="flex gap-2 flex-shrink-0 mt-1">
+              <button
+                onClick={() => router.push(`/popup/edit/${postId}`)}
+                className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+              >
+                수정
+              </button>
+              <button
+                onClick={handleDelete}
+                className="text-xs text-red-400 hover:text-red-600 transition-colors"
+              >
+                삭제
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Tags */}

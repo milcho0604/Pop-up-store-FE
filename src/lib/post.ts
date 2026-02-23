@@ -44,6 +44,44 @@ export const postApi = {
   getListByCity: (city: string) =>
     api.get<ApiResponse<PostListDto[]>>(`/post/list/city?city=${encodeURIComponent(city)}`),
 
+  // 팝업 수정 (ADMIN)
+  update: async (id: number, token: string, data: Partial<PostCreateReqDto>, postImage?: File) => {
+    const formData = new FormData();
+
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (Array.isArray(value)) {
+        value.forEach((v) => formData.append(key, v));
+      } else {
+        formData.append(key, String(value));
+      }
+    });
+
+    if (postImage) {
+      formData.append('postImg', postImage);
+    }
+
+    const res = await fetch(`${API_URL}/admin/post/update/${id}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+    return res.json();
+  },
+
+  // 팝업 삭제 (ADMIN)
+  delete: async (id: number, token: string) => {
+    const res = await fetch(`${API_URL}/admin/post/delete/${id}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+    return res.json();
+  },
+
   // 팝업 등록 (ADMIN)
   create: async (token: string, data: PostCreateReqDto, postImage?: File) => {
     const formData = new FormData();
