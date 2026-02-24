@@ -1,11 +1,20 @@
 import { api, ApiResponse } from './api';
-import { MemberProfileResDto, MemberProfileUpdateReqDto } from '@/types/member';
+import { MemberProfileResDto, MemberProfileUpdateReqDto, MemberListResDto } from '@/types/member';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export const memberApi = {
   getProfile: (token: string) =>
     api.withAuth(token).get<ApiResponse<MemberProfileResDto>>('/profile/me'),
+
+  // 어드민: 회원 목록
+  adminGetList: (token: string, params?: { isVerified?: boolean; isDeleted?: boolean; role?: string }) => {
+    const query = new URLSearchParams({ page: '0', size: '50' });
+    if (params?.isVerified !== undefined) query.set('isVerified', String(params.isVerified));
+    if (params?.isDeleted !== undefined) query.set('isDeleted', String(params.isDeleted));
+    if (params?.role) query.set('role', params.role);
+    return api.withAuth(token).get<ApiResponse<{ content: MemberListResDto[] }>>(`/admin/member/list?${query}`);
+  },
 
   updateProfile: async (
     token: string,

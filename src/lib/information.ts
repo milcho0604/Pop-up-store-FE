@@ -23,6 +23,48 @@ export const informationApi = {
   getMyList: (token: string) =>
     api.withAuth(token).get<ApiResponse<InformationListDto[]>>('/info/my/list'),
 
+  // 어드민: 제보 목록 (상태 필터)
+  adminGetList: (token: string, status?: string, page = 0) =>
+    api.withAuth(token).get<ApiResponse<{ content: InformationListDto[]; last: boolean }>>(
+      `/info/list?page=${page}&size=20${status ? `&status=${status}` : ''}`,
+    ),
+
+  // 어드민: 제보 → 팝업 변환(승인)
+  adminConvert: (id: number, token: string) => {
+    const res = fetch(`${API_URL}/info/convert/${id}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.then((r) => { if (!r.ok) throw new Error(`API Error: ${r.status}`); return r.json(); });
+  },
+
+  // 어드민: 제보 반려
+  adminReject: (id: number, token: string) => {
+    const res = fetch(`${API_URL}/info/reject/${id}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.then((r) => { if (!r.ok) throw new Error(`API Error: ${r.status}`); return r.json(); });
+  },
+
+  // 어드민: 제보 삭제
+  adminDelete: (id: number, token: string) => {
+    const res = fetch(`${API_URL}/info/delete/${id}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.then((r) => { if (!r.ok) throw new Error(`API Error: ${r.status}`); return r.json(); });
+  },
+
+  // 어드민: 승인 취소
+  adminCancelApproval: (id: number, token: string) => {
+    const res = fetch(`${API_URL}/info/cancel-approval/${id}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.then((r) => { if (!r.ok) throw new Error(`API Error: ${r.status}`); return r.json(); });
+  },
+
   // 팝업 제보 등록
   create: async (token: string, data: InformationCreateReqDto, postImage?: File) => {
     const formData = new FormData();

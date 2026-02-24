@@ -13,6 +13,7 @@ import { reviewApi } from '@/lib/review';
 import { MemberProfileResDto, FavoriteResDto, InformationListDto, FollowStatsDto } from '@/types/member';
 import { PostListDto } from '@/types/post';
 import { ReviewResDto } from '@/types/review';
+import { isAdmin } from '@/lib/auth';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 import DefaultImage from '@/components/ui/DefaultImage';
 
@@ -237,6 +238,14 @@ export default function MyPage() {
               >
                 팝업 제보
               </Link>
+              {isAdmin(localStorage.getItem('token') ?? '') && (
+                <Link
+                  href="/admin"
+                  className="px-4 py-2.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
+                >
+                  관리자
+                </Link>
+              )}
               <button
                 onClick={handleLogout}
                 className="px-5 py-2.5 text-sm font-medium text-gray-400 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"

@@ -80,6 +80,18 @@ export interface FollowStatsDto {
   followingCount: number;
 }
 
+export interface MemberListResDto {
+  id: number;
+  name: string;
+  nickname: string;
+  phone: string;
+  memberEmail: string;
+  profileImgUrl: string;
+  role: string;
+  isVerified: boolean;
+  deletedAt: string | null;
+}
+
 export interface FollowDto {
   followId: number;
   memberId: number;
