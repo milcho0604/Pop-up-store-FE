@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PostDetailDto } from '@/types/post';
 import { postApi } from '@/lib/post';
 import { favoriteApi } from '@/lib/favorite';
-import { isAdmin, getTokenEmail } from '@/lib/auth';
+import { isAdmin } from '@/lib/auth';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DefaultImage from '@/components/ui/DefaultImage';
 import CommentSection from '@/components/features/CommentSection';
@@ -53,6 +53,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
         const data = res.result;
         setPost(data);
         setLikeCount(data?.likeCount ?? 0);
+        setLiked(data?.isLiked ?? false);
 
         // 조회수 증가 (별도 호출, 반환값은 조회수 숫자)
         postApi.incrementViews(postId).catch(() => {});
@@ -69,12 +70,6 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
             setFavorited(false);
           }
 
-          // 좋아요 상태: localStorage에서 읽음 (API 호출 없음)
-          const email = getTokenEmail(token);
-          if (email) {
-            const likedPosts: number[] = JSON.parse(localStorage.getItem(`liked_${email}`) ?? '[]');
-            setLiked(likedPosts.includes(postId));
-          }
         }
       } catch {
         /* ignore */
@@ -91,29 +86,15 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     const token = getToken();
     if (!token) { setShowLogin(true); return; }
 
-    const email = getTokenEmail(token);
-    const likedKey = email ? `liked_${email}` : null;
-
-    const updateStorage = (nowLiked: boolean) => {
-      if (!likedKey) return;
-      const likedPosts: number[] = JSON.parse(localStorage.getItem(likedKey) ?? '[]');
-      const next = nowLiked
-        ? [...new Set([...likedPosts, postId])]
-        : likedPosts.filter((id) => id !== postId);
-      localStorage.setItem(likedKey, JSON.stringify(next));
-    };
-
     try {
       if (liked) {
         const res = await postApi.unlike(postId, token);
         setLikeCount(res.result ?? likeCount - 1);
         setLiked(false);
-        updateStorage(false);
       } else {
         const res = await postApi.like(postId, token);
         setLikeCount(res.result ?? likeCount + 1);
         setLiked(true);
-        updateStorage(true);
       }
     } catch {
       /* ignore */

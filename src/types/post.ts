@@ -96,4 +96,5 @@ export interface PostDetailDto {
   status: string;
   tags: TagDto[];
   businessInfo: BusinessInfoDto | null;
+  isLiked: boolean;
 }
