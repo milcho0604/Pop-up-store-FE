@@ -18,6 +18,10 @@ export const followApi = {
   check: (memberId: number, token: string) =>
     api.withAuth(token).get<ApiResponse<boolean>>(`/follow/${memberId}/check`),
 
+  // 특정 회원 팔로우 통계
+  getStats: (memberId: number) =>
+    api.get<ApiResponse<FollowStatsDto>>(`/follow/${memberId}/stats`),
+
   // 내 팔로워 목록
   getMyFollowers: (token: string) =>
     api.withAuth(token).get<ApiResponse<FollowDto[]>>('/follow/my/followers'),

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, FormEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { ReviewResDto, ReviewCreateReqDto } from '@/types/review';
 import { reviewApi } from '@/lib/review';
 import { getTokenMemberId } from '@/lib/auth';
@@ -396,7 +397,9 @@ function ReviewItem({
       {/* 내용 */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-900">{review.memberNickname}</span>
+          <Link href={`/member/${review.memberId}`} className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+            {review.memberNickname}
+          </Link>
           <span className="text-xs text-gray-300">{timeAgo(review.createdAt)}</span>
           {isModified && <span className="text-[10px] text-gray-300">(수정됨)</span>}
         </div>

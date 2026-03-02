@@ -7,6 +7,9 @@ export const memberApi = {
   getProfile: (token: string) =>
     api.withAuth(token).get<ApiResponse<MemberProfileResDto>>('/profile/me'),
 
+  getProfileById: (memberId: number) =>
+    api.get<ApiResponse<MemberProfileResDto>>(`/profile/${memberId}`),
+
   // 어드민: 회원 목록
   adminGetList: (token: string, params?: { isVerified?: boolean; isDeleted?: boolean; role?: string }) => {
     const query = new URLSearchParams({ page: '0', size: '50' });

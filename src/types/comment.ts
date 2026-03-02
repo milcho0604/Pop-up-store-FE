@@ -2,6 +2,7 @@ export interface CommentDto {
   id: number;
   nickName: string;
   doctorEmail: string;
+  memberId: number | null;
   content: string;
   profileImg: string;
   createdTimeAt: string;

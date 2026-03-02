@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, FormEvent } from 'react';
+import Link from 'next/link';
 import { CommentDto } from '@/types/comment';
 import { commentApi } from '@/lib/comment';
 import { getTokenEmail } from '@/lib/auth';
@@ -173,9 +174,15 @@ export default function CommentSection({ postId }: CommentSectionProps) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`font-medium text-gray-900 ${isReply ? 'text-xs' : 'text-sm'}`}>
-              {c.nickName}
-            </span>
+            {c.memberId ? (
+              <Link href={`/member/${c.memberId}`} className={`font-medium text-gray-900 hover:text-gray-600 transition-colors ${isReply ? 'text-xs' : 'text-sm'}`}>
+                {c.nickName}
+              </Link>
+            ) : (
+              <span className={`font-medium text-gray-900 ${isReply ? 'text-xs' : 'text-sm'}`}>
+                {c.nickName}
+              </span>
+            )}
             <span className="text-xs text-gray-300">{timeAgo(c.createdTimeAt)}</span>
             {c.updatedTimeAt !== c.createdTimeAt && (
               <span className="text-[10px] text-gray-300">(수정됨)</span>
