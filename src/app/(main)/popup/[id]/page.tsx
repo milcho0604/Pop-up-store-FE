@@ -11,6 +11,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import DefaultImage from '@/components/ui/DefaultImage';
 import CommentSection from '@/components/features/CommentSection';
 import ReviewSection from '@/components/features/ReviewSection';
+import KakaoMap from '@/components/features/KakaoMap';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 
 function formatDate(dateStr: string | null | undefined) {
@@ -329,6 +330,11 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
                 <p className="text-sm text-gray-900 font-medium">{address}</p>
               </div>
             </div>
+          )}
+
+          {/* Kakao Map */}
+          {address && (
+            <KakaoMap address={address} title={post.title} />
           )}
 
           {/* Operating Hours */}
