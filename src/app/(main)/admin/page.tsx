@@ -2,6 +2,7 @@
 
 import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { isAdmin } from '@/lib/auth';
 import { informationApi } from '@/lib/information';
 import { noticeApi, NoticeSaveDto } from '@/lib/notice';
@@ -662,7 +663,12 @@ export default function AdminPage() {
 
   return (
     <div className="px-5 pt-4 pb-10">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">관리자</h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-xl font-bold text-gray-900">관리자</h1>
+        <Link href="/popup/create" className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-xl hover:bg-gray-800 transition-colors">
+          + 팝업 등록
+        </Link>
+      </div>
 
       {/* 탭 */}
       <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
