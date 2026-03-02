@@ -20,25 +20,28 @@ function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialKeyword = searchParams.get('keyword') ?? '';
+  const initialDong = searchParams.get('dong') ?? '';
 
   const [keyword, setKeyword] = useState(initialKeyword);
+  const [dong, setDong] = useState(initialDong);
   const [results, setResults] = useState<PostListDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [sort, setSort] = useState<SortType>('LATEST');
   const [popularTags, setPopularTags] = useState<TagDto[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);  // eslint-disable-line @typescript-eslint/no-unused-vars
 
   useEffect(() => {
     tagApi.getPopular(15).then((res) => setPopularTags(res.result ?? [])).catch(() => {});
   }, []);
 
-  const doSearch = useCallback(async (query: string, sortBy: SortType, categories?: string[]) => {
+  const doSearch = useCallback(async (query: string, sortBy: SortType, dongFilter?: string) => {
     setLoading(true);
     setSearched(true);
     try {
       const res = await postApi.searchAll({
         keyword: query || undefined,
+        dong: dongFilter || undefined,
         sortBy,
       });
       setResults(res.result ?? []);
@@ -51,8 +54,8 @@ function SearchContent() {
 
   // URL 파라미터로 초기 검색
   useEffect(() => {
-    if (initialKeyword) {
-      doSearch(initialKeyword, sort);
+    if (initialKeyword || initialDong) {
+      doSearch(initialKeyword, sort, initialDong);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -60,7 +63,7 @@ function SearchContent() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = keyword.trim();
-    // URL 업데이트
+    setDong('');
     if (trimmed) {
       router.replace(`/search?keyword=${encodeURIComponent(trimmed)}`);
     } else {
@@ -72,7 +75,7 @@ function SearchContent() {
   const handleSortChange = (newSort: SortType) => {
     setSort(newSort);
     if (searched) {
-      doSearch(keyword.trim(), newSort);
+      doSearch(keyword.trim(), newSort, dong);
     }
   };
 
@@ -138,7 +141,7 @@ function SearchContent() {
       {!loading && searched && results.length > 0 && (
         <>
           <p className="text-xs text-gray-400 mb-4">
-            검색 결과 {results.length}건
+            {dong && !keyword && `${dong} 근처 · `}검색 결과 {results.length}건
           </p>
           <div className="space-y-5">
             {results.map((post) => (

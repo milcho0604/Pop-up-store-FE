@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PostListDto } from '@/types/post';
 import { postApi } from '@/lib/post';
 import { isAdmin } from '@/lib/auth';
+import { getCurrentLocation, LocationInfo } from '@/lib/location';
 import PopupCard from '@/components/features/PopupCard';
 import PopupCarousel from '@/components/features/PopupCarousel';
 
@@ -28,6 +29,12 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [keyword, setKeyword] = useState('');
   const [admin, setAdmin] = useState(false);
+
+  // 현재 위치 기반
+  const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
+  const [nearbyPosts, setNearbyPosts] = useState<PostListDto[]>([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -54,6 +61,30 @@ export default function HomePage() {
     };
     fetchPosts();
   }, []);
+
+  const handleGetLocation = async () => {
+    setLocationLoading(true);
+    setLocationError('');
+    setNearbyPosts([]);
+    try {
+      const info = await getCurrentLocation();
+      setLocationInfo(info);
+      // 동 기준으로 검색, 없으면 구 기준
+      const dong = info.dong || info.gu;
+      const res = await postApi.searchAll({ dong });
+      setNearbyPosts(res.result ?? []);
+      if ((res.result ?? []).length === 0) {
+        setLocationError(`${info.label} 근처에 등록된 팝업스토어가 없습니다`);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof GeolocationPositionError
+        ? (e.code === 1 ? '위치 접근 권한이 거부되었습니다' : '위치를 가져올 수 없습니다')
+        : '위치를 가져올 수 없습니다';
+      setLocationError(msg);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   const filteredPosts = useMemo(() => {
     if (statusFilter === 'ALL') return allPosts;
@@ -117,12 +148,12 @@ export default function HomePage() {
         </form>
 
         {/* 상태 필터 */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
           {statusFilters.map((filter) => (
             <button
               key={filter.value}
               onClick={() => setStatusFilter(filter.value)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                 statusFilter === filter.value
                   ? 'bg-gray-900 text-white'
                   : 'bg-gray-100 text-gray-400'
@@ -132,6 +163,68 @@ export default function HomePage() {
             </button>
           ))}
         </div>
+      </section>
+
+      {/* 현재 위치 기반 팝업 섹션 */}
+      <section className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-gray-900">내 주변 팝업</h2>
+          <button
+            onClick={handleGetLocation}
+            disabled={locationLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-full text-xs font-medium text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50"
+          >
+            {locationLoading ? (
+              <span className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+              </svg>
+            )}
+            {locationInfo ? locationInfo.label : '현재 위치'}
+          </button>
+        </div>
+
+        {!locationInfo && !locationLoading && !locationError && (
+          <p className="text-xs text-gray-300 text-center py-6">
+            위치 버튼을 눌러 주변 팝업스토어를 찾아보세요
+          </p>
+        )}
+
+        {locationError && (
+          <p className="text-xs text-gray-400 text-center py-6">{locationError}</p>
+        )}
+
+        {locationLoading && (
+          <div className="space-y-3">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="flex gap-4 animate-pulse">
+                <div className="w-20 h-20 rounded-2xl bg-gray-100 flex-shrink-0" />
+                <div className="flex-1 space-y-2 py-2">
+                  <div className="h-3.5 bg-gray-100 rounded w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!locationLoading && nearbyPosts.length > 0 && (
+          <div className="space-y-4">
+            {nearbyPosts.slice(0, 5).map((post) => (
+              <PopupCard key={post.id} post={post} variant="horizontal" />
+            ))}
+            {nearbyPosts.length > 5 && (
+              <button
+                onClick={() => router.push(`/search?dong=${encodeURIComponent(locationInfo?.dong || locationInfo?.gu || '')}`)}
+                className="w-full py-2.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {locationInfo?.label} 팝업 전체보기 ({nearbyPosts.length}개)
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Popular Section */}

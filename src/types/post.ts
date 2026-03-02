@@ -51,6 +51,7 @@ export interface SearchFilterReqDto {
   categories?: string[];
   statuses?: string[];
   city?: string;
+  dong?: string;
   startDate?: string;
   endDate?: string;
   sortBy?: 'LATEST' | 'POPULAR' | 'VIEW_COUNT' | 'ENDING_SOON';
