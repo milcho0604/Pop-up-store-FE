@@ -312,6 +312,93 @@ function NoticesTab({ token }: { token: string }) {
   );
 }
 
+// ─── 투표 옵션 관리 서브뷰 ─────────────────────────────────────────────────────
+function PollOptionsPanel({ poll, token, onRefresh }: { poll: PollResDto; token: string; onRefresh: () => void }) {
+  const [newPostId, setNewPostId] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const handleAdd = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!newPostId.trim() && !newDesc.trim()) return;
+    setAdding(true);
+    try {
+      await pollApi.adminAddOption(poll.pollId, token, {
+        postId: newPostId.trim() ? Number(newPostId.trim()) : undefined,
+        description: newDesc.trim() || undefined,
+      });
+      setNewPostId('');
+      setNewDesc('');
+      onRefresh();
+    } catch { alert('옵션 추가에 실패했습니다.'); }
+    finally { setAdding(false); }
+  };
+
+  const handleDeleteOption = async (optionId: number) => {
+    if (!confirm('옵션을 삭제하시겠습니까?')) return;
+    setDeletingId(optionId);
+    try {
+      await pollApi.adminDeleteOption(optionId, token);
+      onRefresh();
+    } catch { alert('옵션 삭제에 실패했습니다.'); }
+    finally { setDeletingId(null); }
+  };
+
+  const inputClass = 'w-full px-3 py-2 bg-white rounded-lg text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200 border border-gray-100';
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-100">
+      <p className="text-xs font-semibold text-gray-500 mb-2">선택지 ({poll.options.length}개)</p>
+
+      {poll.options.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          {poll.options.map((opt) => (
+            <div key={opt.optionId} className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-100">
+              <div className="flex-1 min-w-0">
+                {opt.postTitle && <p className="text-xs font-medium text-gray-700 truncate">{opt.postTitle}</p>}
+                {opt.description && <p className="text-xs text-gray-400">{opt.description}</p>}
+                <p className="text-[10px] text-gray-300 mt-0.5">{opt.voteCount}표 ({opt.votePercentage.toFixed(1)}%)</p>
+              </div>
+              <button
+                onClick={() => handleDeleteOption(opt.optionId)}
+                disabled={deletingId === opt.optionId}
+                className="text-[11px] text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors flex-shrink-0"
+              >
+                삭제
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={handleAdd} className="flex flex-col gap-1.5">
+        <div className="flex gap-1.5">
+          <input
+            value={newPostId}
+            onChange={(e) => setNewPostId(e.target.value)}
+            placeholder="팝업 ID (선택)"
+            className={`${inputClass} w-28 flex-shrink-0`}
+          />
+          <input
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            placeholder="설명 (선택)"
+            className={inputClass}
+          />
+          <button
+            type="submit"
+            disabled={adding || (!newPostId.trim() && !newDesc.trim())}
+            className="px-3 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg disabled:bg-gray-300 transition-colors flex-shrink-0"
+          >
+            {adding ? '...' : '추가'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ─── 투표 관리 탭 ───────────────────────────────────────────────────────────────
 function PollsTab({ token }: { token: string }) {
   const [items, setItems] = useState<PollResDto[]>([]);
@@ -319,6 +406,7 @@ function PollsTab({ token }: { token: string }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<PollResDto | null>(null);
   const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -380,6 +468,7 @@ function PollsTab({ token }: { token: string }) {
     if (!confirm('투표를 삭제하시겠습니까?')) return;
     try {
       await pollApi.adminDelete(id, token);
+      if (expandedId === id) setExpandedId(null);
       await fetchList();
     } catch { alert('삭제에 실패했습니다.'); }
   };
@@ -433,19 +522,35 @@ function PollsTab({ token }: { token: string }) {
       ) : (
         <div className="space-y-2">
           {items.map((item) => (
-            <div key={item.pollId} className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  {item.isActive && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded">진행중</span>}
-                  {item.isEnded && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">종료</span>}
-                  <span className="text-sm font-medium text-gray-900 truncate">{item.title}</span>
+            <div key={item.pollId} className="p-4 bg-gray-50 rounded-2xl">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    {item.isActive && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded">진행중</span>}
+                    {item.isEnded && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">종료</span>}
+                    <span className="text-sm font-medium text-gray-900 truncate">{item.title}</span>
+                  </div>
+                  <p className="text-xs text-gray-400">{formatDate(item.startDate)} ~ {formatDate(item.endDate)} · {item.totalVotes}표 · 선택지 {item.options.length}개</p>
                 </div>
-                <p className="text-xs text-gray-400">{formatDate(item.startDate)} ~ {formatDate(item.endDate)} · {item.totalVotes}표</p>
+                <div className="flex gap-2 flex-shrink-0 items-center">
+                  <button
+                    onClick={() => setExpandedId(expandedId === item.pollId ? null : item.pollId)}
+                    className="text-xs text-blue-400 hover:text-blue-600 transition-colors"
+                  >
+                    {expandedId === item.pollId ? '접기' : '옵션'}
+                  </button>
+                  <button onClick={() => openEdit(item)} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">수정</button>
+                  <button onClick={() => handleDelete(item.pollId)} className="text-xs text-red-400 hover:text-red-600 transition-colors">삭제</button>
+                </div>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <button onClick={() => openEdit(item)} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">수정</button>
-                <button onClick={() => handleDelete(item.pollId)} className="text-xs text-red-400 hover:text-red-600 transition-colors">삭제</button>
-              </div>
+
+              {expandedId === item.pollId && (
+                <PollOptionsPanel
+                  poll={item}
+                  token={token}
+                  onRefresh={fetchList}
+                />
+              )}
             </div>
           ))}
         </div>

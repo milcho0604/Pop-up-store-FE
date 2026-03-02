@@ -41,4 +41,12 @@ export const pollApi = {
   // 어드민: 투표 삭제
   adminDelete: (id: number, token: string) =>
     api.withAuth(token).delete<ApiResponse<null>>(`/poll/admin/${id}`),
+
+  // 어드민: 투표 옵션 추가
+  adminAddOption: (pollId: number, token: string, data: { postId?: number; description?: string }) =>
+    api.withAuth(token).post<ApiResponse<null>>(`/poll/admin/${pollId}/option`, data),
+
+  // 어드민: 투표 옵션 삭제
+  adminDeleteOption: (optionId: number, token: string) =>
+    api.withAuth(token).delete<ApiResponse<null>>(`/poll/admin/option/${optionId}`),
 };
