@@ -13,6 +13,7 @@ import CommentSection from '@/components/features/CommentSection';
 import ReviewSection from '@/components/features/ReviewSection';
 import KakaoMap from '@/components/features/KakaoMap';
 import LoginPrompt from '@/components/ui/LoginPrompt';
+import ImageViewer from '@/components/ui/ImageViewer';
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '';
@@ -45,6 +46,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [shareToast, setShareToast] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -203,21 +205,43 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Image */}
-      <div className="relative aspect-[4/3] mx-5 rounded-2xl overflow-hidden">
+      <div
+        className="relative aspect-[4/3] mx-5 rounded-2xl overflow-hidden"
+        onClick={() => hasImage && setViewerOpen(true)}
+      >
         {hasImage ? (
-          <Image
-            src={post.postImgUrl}
-            alt={post.title}
-            fill
-            className="object-cover"
-            onError={() => setImgError(true)}
-            sizes="100vw"
-            priority
-          />
+          <>
+            <Image
+              src={post.postImgUrl}
+              alt={post.title}
+              fill
+              className="object-cover"
+              onError={() => setImgError(true)}
+              sizes="100vw"
+              priority
+            />
+            <div className="absolute inset-0 flex items-end justify-end p-3 pointer-events-none">
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-black/30 text-white text-[10px]">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                </svg>
+                확대
+              </span>
+            </div>
+          </>
         ) : (
           <DefaultImage className="w-full h-full" />
         )}
       </div>
+
+      {/* 이미지 뷰어 */}
+      {viewerOpen && hasImage && (
+        <ImageViewer
+          src={post.postImgUrl}
+          alt={post.title}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
 
       {/* Content */}
       <div className="px-5 mt-5">
