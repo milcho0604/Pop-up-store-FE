@@ -5,21 +5,19 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { PostListDto } from '@/types/post';
 import { postApi } from '@/lib/post';
+import { loadKakaoMaps } from '@/lib/kakao';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DefaultImage from '@/components/ui/DefaultImage';
 
 export default function MapPage() {
   const router = useRouter();
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   const [posts, setPosts] = useState<PostListDto[]>([]);
   const [selected, setSelected] = useState<PostListDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [geocodedCount, setGeocodedCount] = useState(0);
   const [imgError, setImgError] = useState(false);
-
-  const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
 
   useEffect(() => {
     postApi.getList()
@@ -29,16 +27,16 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    if (loading || !posts.length || !mapRef.current || !KAKAO_KEY) return;
+    if (loading || !posts.length || !mapRef.current) return;
 
     const postsWithAddr = posts.filter((p) => p.street || p.dong || p.city);
+    let cancelled = false;
 
-    const initMap = () => {
+    loadKakaoMaps().then(() => {
+      if (cancelled || !mapRef.current) return;
+
       const center = new window.kakao.maps.LatLng(37.5665, 126.9780); // 서울 기본
       const map = new window.kakao.maps.Map(mapRef.current, { center, level: 8 });
-      mapInstanceRef.current = map;
-
-      // 지도 클릭 시 선택 해제
       window.kakao.maps.event.addListener(map, 'click', () => setSelected(null));
 
       const geocoder = new window.kakao.maps.services.Geocoder();
@@ -48,16 +46,11 @@ export default function MapPage() {
         if (!address) return;
 
         setTimeout(() => {
+          if (cancelled) return;
           geocoder.addressSearch(address, (result: any, status: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-            if (status === window.kakao.maps.services.Status.OK) {
+            if (!cancelled && status === window.kakao.maps.services.Status.OK) {
               const coords = new window.kakao.maps.LatLng(result[0].y, result[0].x);
-
-              const marker = new window.kakao.maps.Marker({
-                map,
-                position: coords,
-                title: post.title,
-              });
-
+              const marker = new window.kakao.maps.Marker({ map, position: coords, title: post.title });
               window.kakao.maps.event.addListener(marker, 'click', () => {
                 setSelected(post);
                 setImgError(false);
@@ -68,25 +61,10 @@ export default function MapPage() {
           });
         }, idx * 120);
       });
-    };
+    }).catch(() => {});
 
-    if (window.kakao?.maps) {
-      window.kakao.maps.load(initMap);
-      return;
-    }
-
-    const existing = document.getElementById('kakao-map-script');
-    if (existing) {
-      existing.addEventListener('load', () => window.kakao.maps.load(initMap));
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.id = 'kakao-map-script';
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&libraries=services&autoload=false`;
-    script.onload = () => window.kakao.maps.load(initMap);
-    document.head.appendChild(script);
-  }, [loading, posts, KAKAO_KEY]);
+    return () => { cancelled = true; };
+  }, [loading, posts]);
 
   const postsWithAddr = posts.filter((p) => p.street || p.dong || p.city);
   const allGeocoded = !loading && geocodedCount >= postsWithAddr.length && postsWithAddr.length > 0;
