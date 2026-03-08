@@ -69,11 +69,29 @@ export default function HomePage() {
     try {
       const info = await getCurrentLocation();
       setLocationInfo(info);
-      // 동 기준으로 검색, 없으면 구 기준
-      const dong = info.dong || info.gu;
-      const res = await postApi.searchAll({ dong });
-      setNearbyPosts(res.result ?? []);
-      if ((res.result ?? []).length === 0) {
+
+      let results: PostListDto[] = [];
+
+      // 1단계: 동(neighborhood) 기준 검색
+      if (info.dong) {
+        const res = await postApi.searchAll({ dong: info.dong });
+        results = res.result ?? [];
+      }
+
+      // 2단계: 동 결과 없으면 구(district) 키워드 검색 (street 주소에 포함된 경우 대응)
+      if (results.length === 0 && info.gu) {
+        const res = await postApi.searchAll({ keyword: info.gu });
+        results = res.result ?? [];
+      }
+
+      // 3단계: 그래도 없으면 시/도(city) 기준 검색
+      if (results.length === 0 && info.city) {
+        const res = await postApi.searchAll({ dong: info.city });
+        results = res.result ?? [];
+      }
+
+      setNearbyPosts(results);
+      if (results.length === 0) {
         setLocationError(`${info.label} 근처에 등록된 팝업스토어가 없습니다`);
       }
     } catch (e: unknown) {
