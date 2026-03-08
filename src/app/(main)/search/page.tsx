@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { PostListDto, TagDto } from '@/types/post';
 import { postApi } from '@/lib/post';
 import { tagApi } from '@/lib/tag';
+import { useSearchHistory } from '@/hooks/useSearchHistory';
 import PopupCard from '@/components/features/PopupCard';
 
 type SortType = 'LATEST' | 'POPULAR' | 'VIEW_COUNT' | 'ENDING_SOON';
@@ -29,7 +30,8 @@ function SearchContent() {
   const [searched, setSearched] = useState(false);
   const [sort, setSort] = useState<SortType>('LATEST');
   const [popularTags, setPopularTags] = useState<TagDto[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);  // eslint-disable-line @typescript-eslint/no-unused-vars
+
+  const { history, add: addHistory, remove: removeHistory, clear: clearHistory } = useSearchHistory();
 
   useEffect(() => {
     tagApi.getPopular(15).then((res) => setPopularTags(res.result ?? [])).catch(() => {});
@@ -65,11 +67,20 @@ function SearchContent() {
     const trimmed = keyword.trim();
     setDong('');
     if (trimmed) {
+      addHistory(trimmed);
       router.replace(`/search?keyword=${encodeURIComponent(trimmed)}`);
     } else {
       router.replace('/search');
     }
     doSearch(trimmed, sort);
+  };
+
+  const handleHistoryClick = (word: string) => {
+    setKeyword(word);
+    setDong('');
+    addHistory(word);
+    router.replace(`/search?keyword=${encodeURIComponent(word)}`);
+    doSearch(word, sort);
   };
 
   const handleSortChange = (newSort: SortType) => {
@@ -168,6 +179,43 @@ function SearchContent() {
       {/* 초기 상태 (검색 전) */}
       {!loading && !searched && (
         <div>
+          {/* 최근 검색어 */}
+          {history.length > 0 && (
+            <div className="mb-7">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">최근 검색어</h3>
+                <button
+                  onClick={clearHistory}
+                  className="text-xs text-gray-300 hover:text-gray-500 transition-colors"
+                >
+                  전체 삭제
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {history.map((word) => (
+                  <div key={word} className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 rounded-full">
+                    <button
+                      onClick={() => handleHistoryClick(word)}
+                      className="text-xs text-gray-600"
+                    >
+                      {word}
+                    </button>
+                    <button
+                      onClick={() => removeHistory(word)}
+                      className="text-gray-300 hover:text-gray-500 transition-colors"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 인기 태그 */}
           {popularTags.length > 0 && (
             <div className="mb-8">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">인기 태그</h3>
@@ -175,7 +223,7 @@ function SearchContent() {
                 {popularTags.map((tag) => (
                   <button
                     key={tag.id}
-                    onClick={() => { setKeyword(tag.name); doSearch(tag.name, sort); }}
+                    onClick={() => { setKeyword(tag.name); addHistory(tag.name); doSearch(tag.name, sort); }}
                     className="px-3 py-1.5 bg-gray-50 rounded-full text-xs text-gray-600 hover:bg-gray-100 transition-colors"
                   >
                     #{tag.name}
@@ -184,6 +232,7 @@ function SearchContent() {
               </div>
             </div>
           )}
+
           <div className="text-center py-12">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-50 mb-4">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
