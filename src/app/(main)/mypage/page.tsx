@@ -17,7 +17,7 @@ import { isAdmin } from '@/lib/auth';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 import DefaultImage from '@/components/ui/DefaultImage';
 
-type TabType = 'favorites' | 'myPosts' | 'myReviews' | 'reports';
+type TabType = 'favorites' | 'likes' | 'myPosts' | 'myReviews' | 'reports';
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   PENDING: { text: '대기', color: 'bg-yellow-100 text-yellow-700' },
@@ -38,6 +38,7 @@ export default function MyPage() {
   const [profile, setProfile] = useState<MemberProfileResDto | null>(null);
   const [followStats, setFollowStats] = useState<FollowStatsDto | null>(null);
   const [favorites, setFavorites] = useState<FavoriteResDto[]>([]);
+  const [likedPosts, setLikedPosts] = useState<PostListDto[]>([]);
   const [myPosts, setMyPosts] = useState<PostListDto[]>([]);
   const [myReviews, setMyReviews] = useState<ReviewResDto[]>([]);
   const [reports, setReports] = useState<InformationListDto[]>([]);
@@ -110,6 +111,9 @@ export default function MyPage() {
         if (tab === 'favorites' && favorites.length === 0) {
           const res = await favoriteApi.getMyList(token);
           setFavorites(res.result ?? []);
+        } else if (tab === 'likes' && likedPosts.length === 0) {
+          const res = await postApi.getLikedList(token);
+          setLikedPosts(res.result ?? []);
         } else if (tab === 'myPosts' && myPosts.length === 0) {
           const res = await postApi.getMyList(token);
           setMyPosts(res.result ?? []);
@@ -258,6 +262,7 @@ export default function MyPage() {
             <div className="flex gap-2 mb-5">
               {([
                 { key: 'favorites' as const, label: '즐겨찾기' },
+                { key: 'likes' as const, label: '좋아요' },
                 { key: 'myPosts' as const, label: '내 게시글' },
                 { key: 'myReviews' as const, label: '내 리뷰' },
                 { key: 'reports' as const, label: '내 제보' },
@@ -306,6 +311,44 @@ export default function MyPage() {
                   <div className="space-y-5">
                     {favorites.map((fav) => (
                       <FavoriteCard key={fav.favoriteId} favorite={fav} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 좋아요 탭 */}
+            {!tabLoading && tab === 'likes' && (
+              <>
+                {likedPosts.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-50 mb-4">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-400">좋아요한 팝업이 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    {likedPosts.map((post) => (
+                      <FavoriteCard
+                        key={post.id}
+                        favorite={{
+                          favoriteId: post.id,
+                          postId: post.id,
+                          postTitle: post.title,
+                          postContent: post.content,
+                          postImgUrl: post.postImgUrl,
+                          category: post.category,
+                          startDate: post.startDate,
+                          endDate: post.endDate,
+                          city: post.city,
+                          street: post.street,
+                          zipcode: post.zipcode,
+                          favoritedAt: post.createdTimeAt,
+                        }}
+                      />
                     ))}
                   </div>
                 )}

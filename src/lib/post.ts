@@ -40,6 +40,10 @@ export const postApi = {
   getMyList: (token: string) =>
     api.withAuth(token).get<ApiResponse<PostListDto[]>>('/post/my/list'),
 
+  // 내가 좋아요한 팝업 목록
+  getLikedList: (token: string) =>
+    api.withAuth(token).get<ApiResponse<PostListDto[]>>('/post/liked/list'),
+
   // 도시별 팝업 목록
   getListByCity: (city: string) =>
     api.get<ApiResponse<PostListDto[]>>(`/post/list/city?city=${encodeURIComponent(city)}`),
