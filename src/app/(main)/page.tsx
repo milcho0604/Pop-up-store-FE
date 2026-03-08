@@ -9,6 +9,7 @@ import { isAdmin } from '@/lib/auth';
 import { getCurrentLocation, LocationInfo } from '@/lib/location';
 import PopupCard from '@/components/features/PopupCard';
 import PopupCarousel from '@/components/features/PopupCarousel';
+import LocationSearchInput from '@/components/features/LocationSearchInput';
 
 type SortType = 'views' | 'likes';
 type StatusFilter = 'ALL' | 'ONGOING' | 'UPCOMING' | 'ENDED';
@@ -62,6 +63,40 @@ export default function HomePage() {
     fetchPosts();
   }, []);
 
+  // 위치 정보 기반 팝업 검색 공통 로직
+  const fetchNearbyPosts = async (info: LocationInfo): Promise<PostListDto[]> => {
+    let results: PostListDto[] = [];
+
+    // 1단계: 동 기준 검색 (원본 → 정규화 순)
+    if (info.dong) {
+      const res = await postApi.searchAll({ dong: info.dong });
+      results = res.result ?? [];
+
+      if (results.length === 0) {
+        // "역삼1동" → "역삼동": "동" 바로 앞 숫자만 제거
+        const normalizedDong = info.dong.replace(/\d+(동)$/, '$1');
+        if (normalizedDong !== info.dong) {
+          const res2 = await postApi.searchAll({ dong: normalizedDong });
+          results = res2.result ?? [];
+        }
+      }
+    }
+
+    // 2단계: 구 키워드 검색
+    if (results.length === 0 && info.gu) {
+      const res = await postApi.searchAll({ keyword: info.gu });
+      results = res.result ?? [];
+    }
+
+    // 3단계: 시/도 검색
+    if (results.length === 0 && info.city) {
+      const res = await postApi.searchAll({ dong: info.city });
+      results = res.result ?? [];
+    }
+
+    return results;
+  };
+
   const handleGetLocation = async () => {
     setLocationLoading(true);
     setLocationError('');
@@ -69,37 +104,7 @@ export default function HomePage() {
     try {
       const info = await getCurrentLocation();
       setLocationInfo(info);
-
-      let results: PostListDto[] = [];
-
-      // 1단계: 동(neighborhood) 기준 검색
-      // 원본 dong 먼저 시도, 없으면 "동" 앞 숫자 제거한 정규화 값으로 재시도
-      // (예: 카카오 "역삼1동" vs DB "역삼동" 불일치 대응)
-      if (info.dong) {
-        const res = await postApi.searchAll({ dong: info.dong });
-        results = res.result ?? [];
-
-        if (results.length === 0) {
-          const normalizedDong = info.dong.replace(/\d+(동)$/, '$1');
-          if (normalizedDong !== info.dong) {
-            const res2 = await postApi.searchAll({ dong: normalizedDong });
-            results = res2.result ?? [];
-          }
-        }
-      }
-
-      // 2단계: 동 결과 없으면 구(district) 키워드 검색 (street 주소에 포함된 경우 대응)
-      if (results.length === 0 && info.gu) {
-        const res = await postApi.searchAll({ keyword: info.gu });
-        results = res.result ?? [];
-      }
-
-      // 3단계: 그래도 없으면 시/도(city) 기준 검색
-      if (results.length === 0 && info.city) {
-        const res = await postApi.searchAll({ dong: info.city });
-        results = res.result ?? [];
-      }
-
+      const results = await fetchNearbyPosts(info);
       setNearbyPosts(results);
       if (results.length === 0) {
         setLocationError(`${info.label} 근처에 등록된 팝업스토어가 없습니다`);
@@ -109,6 +114,24 @@ export default function HomePage() {
         ? (e.code === 1 ? '위치 접근 권한이 거부되었습니다' : '위치를 가져올 수 없습니다')
         : '위치를 가져올 수 없습니다';
       setLocationError(msg);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleLocationSelect = async (info: LocationInfo) => {
+    setLocationInfo(info);
+    setLocationLoading(true);
+    setLocationError('');
+    setNearbyPosts([]);
+    try {
+      const results = await fetchNearbyPosts(info);
+      setNearbyPosts(results);
+      if (results.length === 0) {
+        setLocationError(`${info.label} 근처에 등록된 팝업스토어가 없습니다`);
+      }
+    } catch {
+      setLocationError('검색 중 오류가 발생했습니다');
     } finally {
       setLocationLoading(false);
     }
@@ -195,7 +218,7 @@ export default function HomePage() {
 
       {/* 현재 위치 기반 팝업 섹션 */}
       <section className="mb-8">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-semibold text-gray-900">내 주변 팝업</h2>
           <button
             onClick={handleGetLocation}
@@ -214,9 +237,12 @@ export default function HomePage() {
           </button>
         </div>
 
+        {/* 주소 검색 입력 */}
+        <LocationSearchInput onSelect={handleLocationSelect} />
+
         {!locationInfo && !locationLoading && !locationError && (
           <p className="text-xs text-gray-300 text-center py-6">
-            위치 버튼을 눌러 주변 팝업스토어를 찾아보세요
+            위치 버튼을 누르거나 주소를 검색해보세요
           </p>
         )}
 
@@ -225,7 +251,7 @@ export default function HomePage() {
         )}
 
         {locationLoading && (
-          <div className="space-y-3">
+          <div className="space-y-3 mt-3">
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="flex gap-4 animate-pulse">
                 <div className="w-20 h-20 rounded-2xl bg-gray-100 flex-shrink-0" />
@@ -239,7 +265,7 @@ export default function HomePage() {
         )}
 
         {!locationLoading && nearbyPosts.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4 mt-3">
             {nearbyPosts.slice(0, 5).map((post) => (
               <PopupCard key={post.id} post={post} variant="horizontal" />
             ))}
