@@ -73,9 +73,19 @@ export default function HomePage() {
       let results: PostListDto[] = [];
 
       // 1단계: 동(neighborhood) 기준 검색
+      // 원본 dong 먼저 시도, 없으면 "동" 앞 숫자 제거한 정규화 값으로 재시도
+      // (예: 카카오 "역삼1동" vs DB "역삼동" 불일치 대응)
       if (info.dong) {
         const res = await postApi.searchAll({ dong: info.dong });
         results = res.result ?? [];
+
+        if (results.length === 0) {
+          const normalizedDong = info.dong.replace(/\d+(동)$/, '$1');
+          if (normalizedDong !== info.dong) {
+            const res2 = await postApi.searchAll({ dong: normalizedDong });
+            results = res2.result ?? [];
+          }
+        }
       }
 
       // 2단계: 동 결과 없으면 구(district) 키워드 검색 (street 주소에 포함된 경우 대응)
