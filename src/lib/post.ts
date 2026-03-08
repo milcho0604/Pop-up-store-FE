@@ -48,6 +48,10 @@ export const postApi = {
   getListByCity: (city: string) =>
     api.get<ApiResponse<PostListDto[]>>(`/post/list/city?city=${encodeURIComponent(city)}`),
 
+  // 특정 회원의 팝업 목록
+  getListByMember: (memberId: number) =>
+    api.get<ApiResponse<PostListDto[]>>(`/post/list/member/${memberId}`),
+
   // 팝업 수정 (ADMIN)
   update: async (id: number, token: string, data: Partial<PostCreateReqDto>, postImage?: File) => {
     const formData = new FormData();
