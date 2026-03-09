@@ -96,6 +96,12 @@ function getNotificationLink(notification: NotificationDto): string | null {
     case 'LIKE':
     case 'REVIEW':
       return `/popup/${notification.refId}`;
+    case 'FOLLOW':
+      return `/member/${notification.refId}`;
+    case 'VOTE':
+      return `/poll/${notification.refId}`;
+    case 'NOTICE':
+      return `/notice/${notification.refId}`;
     default:
       return null;
   }
