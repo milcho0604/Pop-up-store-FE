@@ -7,6 +7,7 @@ import { postApi } from '@/lib/post';
 import { tagApi } from '@/lib/tag';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
 import PopupCard from '@/components/features/PopupCard';
+import SearchMapView from '@/components/features/SearchMapView';
 
 type SortType = 'LATEST' | 'POPULAR' | 'VIEW_COUNT' | 'ENDING_SOON';
 
@@ -29,6 +30,7 @@ function SearchContent() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [sort, setSort] = useState<SortType>('LATEST');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [popularTags, setPopularTags] = useState<TagDto[]>([]);
 
   const { history, add: addHistory, remove: removeHistory, clear: clearHistory } = useSearchHistory();
@@ -151,14 +153,44 @@ function SearchContent() {
       {/* 검색 결과 */}
       {!loading && searched && results.length > 0 && (
         <>
-          <p className="text-xs text-gray-400 mb-4">
-            {dong && !keyword && `${dong} 근처 · `}검색 결과 {results.length}건
-          </p>
-          <div className="space-y-5">
-            {results.map((post) => (
-              <PopupCard key={post.id} post={post} variant="horizontal" />
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-gray-400">
+              {dong && !keyword && `${dong} 근처 · `}검색 결과 {results.length}건
+            </p>
+            {/* 뷰 토글 */}
+            <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'}`}
+                title="리스트뷰"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'map' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'}`}
+                title="지도뷰"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                  <line x1="8" y1="2" x2="8" y2="18" /><line x1="16" y1="6" x2="16" y2="22" />
+                </svg>
+              </button>
+            </div>
           </div>
+
+          {viewMode === 'map' ? (
+            <SearchMapView posts={results} />
+          ) : (
+            <div className="space-y-5">
+              {results.map((post) => (
+                <PopupCard key={post.id} post={post} variant="horizontal" />
+              ))}
+            </div>
+          )}
         </>
       )}
 
