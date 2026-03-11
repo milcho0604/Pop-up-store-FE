@@ -7,6 +7,21 @@ import { PollResDto } from '@/types/poll';
 import { pollApi } from '@/lib/poll';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function getMyVotedOptions(): Record<string, number[]> {
+  try { return JSON.parse(localStorage.getItem('votedPolls') ?? '{}'); } catch { return {}; }
+}
+
+function saveMyVote(pollId: string, optionIds: number[]) {
+  const votes = getMyVotedOptions();
+  votes[pollId] = optionIds;
+  localStorage.setItem('votedPolls', JSON.stringify(votes));
+}
+
 export default function PollDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -15,10 +30,11 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
   const [selected, setSelected] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [voted, setVoted] = useState(false);
+  const [error, setError] = useState('');
   const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchPoll = async () => {
       try {
         const res = await pollApi.getDetail(Number(id));
         setPoll(res.result);
@@ -28,14 +44,24 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
         setLoading(false);
       }
     };
-    fetch();
+    fetchPoll();
+  }, [id]);
+
+  // localStorage에서 이미 투표한 항목 복원
+  useEffect(() => {
+    const myVotes = getMyVotedOptions();
+    const myOptionIds = myVotes[id];
+    if (myOptionIds?.length) {
+      setVoted(true);
+      setSelected(myOptionIds);
+    }
   }, [id]);
 
   const toggleOption = (optionId: number) => {
     if (voted || poll?.isEnded) return;
     if (poll?.multipleChoice) {
       setSelected((prev) =>
-        prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId]
+        prev.includes(optionId) ? prev.filter((oid) => oid !== optionId) : [...prev, optionId]
       );
     } else {
       setSelected([optionId]);
@@ -46,20 +72,18 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
     if (selected.length === 0) return;
 
     const token = localStorage.getItem('token');
-    if (!token) {
-      setShowLogin(true);
-      return;
-    }
+    if (!token) { setShowLogin(true); return; }
 
     setSubmitting(true);
+    setError('');
     try {
       await pollApi.vote(Number(id), selected, token);
+      saveMyVote(id, selected);
       setVoted(true);
-      // 결과 새로고침
       const res = await pollApi.getDetail(Number(id));
       setPoll(res.result);
     } catch {
-      alert('투표에 실패했습니다.');
+      setError('투표에 실패했습니다. 이미 참여하셨거나 투표 기간이 아닐 수 있습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -69,7 +93,7 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <>
-      <div className="px-5 pt-4">
+      <div className="px-5 pt-4 pb-8">
         <button
           onClick={() => router.back()}
           className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4"
@@ -108,15 +132,20 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
               </div>
               <h1 className="text-lg font-bold text-gray-900 mb-1">{poll.title}</h1>
               {poll.description && (
-                <p className="text-sm text-gray-400">{poll.description}</p>
+                <p className="text-sm text-gray-400 mb-2">{poll.description}</p>
               )}
-              <p className="text-xs text-gray-300 mt-2">{poll.totalVotes}명 참여</p>
+              <div className="flex items-center gap-3 text-xs text-gray-300">
+                <span>{formatDate(poll.startDate)} ~ {formatDate(poll.endDate)}</span>
+                <span>·</span>
+                <span>{poll.totalVotes}명 참여</span>
+              </div>
             </div>
 
             {/* 투표 옵션 */}
             <div className="space-y-3">
               {poll.options.map((option) => {
                 const isSelected = selected.includes(option.optionId);
+                const isMyChoice = voted && isSelected;
 
                 return (
                   <button
@@ -125,7 +154,9 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
                     onClick={() => toggleOption(option.optionId)}
                     disabled={!!showResults}
                     className={`w-full p-3 rounded-xl text-left transition-all ${
-                      isSelected
+                      isMyChoice
+                        ? 'ring-2 ring-gray-900 bg-gray-50'
+                        : isSelected && !voted
                         ? 'ring-2 ring-gray-900 bg-gray-50'
                         : 'bg-gray-50 hover:bg-gray-100'
                     } ${showResults ? 'cursor-default' : ''}`}
@@ -145,7 +176,7 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
                         )}
                       </div>
                       {showResults && (
-                        <span className="text-sm font-bold text-gray-900 flex-shrink-0">
+                        <span className={`text-sm font-bold flex-shrink-0 ${isMyChoice ? 'text-gray-900' : 'text-gray-400'}`}>
                           {option.votePercentage}%
                         </span>
                       )}
@@ -155,7 +186,7 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
                     {showResults && (
                       <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gray-900 rounded-full transition-all duration-500"
+                          className={`h-full rounded-full transition-all duration-500 ${isMyChoice ? 'bg-gray-900' : 'bg-gray-300'}`}
                           style={{ width: `${option.votePercentage}%` }}
                         />
                       </div>
@@ -165,8 +196,13 @@ export default function PollDetailPage({ params }: { params: Promise<{ id: strin
               })}
             </div>
 
+            {/* 에러 메시지 */}
+            {error && (
+              <p className="text-xs text-red-500 text-center mt-4">{error}</p>
+            )}
+
             {/* 투표 버튼 */}
-            {!showResults && (
+            {!showResults && !poll.isEnded && (
               <button
                 onClick={handleVote}
                 disabled={selected.length === 0 || submitting}

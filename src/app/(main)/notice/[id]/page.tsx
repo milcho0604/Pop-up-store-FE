@@ -5,9 +5,15 @@ import { useRouter } from 'next/navigation';
 import { NoticeResDto } from '@/types/notice';
 import { noticeApi } from '@/lib/notice';
 
+const noticeTypeLabel: Record<string, { text: string; color: string }> = {
+  IMPORTANT: { text: '중요', color: 'bg-red-100 text-red-600' },
+  POPUP:     { text: '긴급', color: 'bg-orange-100 text-orange-600' },
+  NORMAL:    { text: '일반', color: 'bg-gray-100 text-gray-500' },
+};
+
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export default function NoticeDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +23,7 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchNotice = async () => {
       try {
         const res = await noticeApi.getDetail(Number(id));
         setNotice(res.result);
@@ -27,11 +33,11 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
         setLoading(false);
       }
     };
-    fetch();
+    fetchNotice();
   }, [id]);
 
   return (
-    <div className="px-5 pt-4">
+    <div className="px-5 pt-4 pb-8">
       <button
         onClick={() => router.back()}
         className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4"
@@ -57,16 +63,33 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
 
       {!loading && notice && (
         <article>
+          {/* 타입 뱃지 */}
           <div className="flex items-center gap-2 mb-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">
-              {notice.noticeType}
-            </span>
+            {(() => {
+              const typeInfo = noticeTypeLabel[notice.noticeType] ?? { text: notice.noticeType, color: 'bg-gray-100 text-gray-500' };
+              return (
+                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${typeInfo.color}`}>
+                  {typeInfo.text}
+                </span>
+              );
+            })()}
           </div>
+
           <h1 className="text-lg font-bold text-gray-900 mb-2">{notice.title}</h1>
-          <div className="flex items-center gap-3 text-xs text-gray-400 mb-6">
+
+          {/* 메타 정보 */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 mb-1">
+            {notice.authorName && <span>{notice.authorName}</span>}
             <span>{formatDate(notice.createdAt)}</span>
             <span>조회 {notice.viewCount}</span>
           </div>
+          {/* 게시 기간 */}
+          {(notice.startDate || notice.endDate) && (
+            <p className="text-xs text-gray-300 mb-6">
+              {formatDate(notice.startDate)} ~ {formatDate(notice.endDate)}
+            </p>
+          )}
+
           <div className="border-t border-gray-100 pt-6">
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{notice.content}</p>
           </div>
