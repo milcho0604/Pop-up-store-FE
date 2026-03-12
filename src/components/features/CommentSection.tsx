@@ -7,12 +7,14 @@ import { commentApi } from '@/lib/comment';
 import { getTokenEmail } from '@/lib/auth';
 import { timeAgo } from '@/lib/time';
 import LoginPrompt from '@/components/ui/LoginPrompt';
+import { useToast } from '@/context/ToastContext';
 
 interface CommentSectionProps {
   postId: number;
 }
 
 export default function CommentSection({ postId }: CommentSectionProps) {
+  const { showToast } = useToast();
   const [comments, setComments] = useState<CommentDto[]>([]);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
       setContent('');
       await fetchComments();
     } catch {
-      alert('댓글 작성에 실패했습니다.');
+      showToast('댓글 작성에 실패했습니다.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -93,7 +95,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
       setReplyingTo(null);
       await fetchComments();
     } catch {
-      alert('답글 작성에 실패했습니다.');
+      showToast('답글 작성에 실패했습니다.', 'error');
     } finally {
       setReplySubmitting(false);
     }
@@ -124,7 +126,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
       setEditContent('');
       await fetchComments();
     } catch {
-      alert('댓글 수정에 실패했습니다.');
+      showToast('댓글 수정에 실패했습니다.', 'error');
     } finally {
       setEditSubmitting(false);
     }
@@ -138,7 +140,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
       await commentApi.delete(id, token);
       await fetchComments();
     } catch {
-      alert('댓글 삭제에 실패했습니다.');
+      showToast('댓글 삭제에 실패했습니다.', 'error');
     }
   };
 

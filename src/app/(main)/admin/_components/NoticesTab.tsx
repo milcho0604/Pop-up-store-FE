@@ -4,8 +4,10 @@ import { useEffect, useState, FormEvent } from 'react';
 import { noticeApi, NoticeSaveDto } from '@/lib/notice';
 import { NoticeResDto } from '@/types/notice';
 import { formatDate, toDatetimeLocal, fromDatetimeLocal } from './adminUtils';
+import { useToast } from '@/context/ToastContext';
 
 export default function NoticesTab({ token }: { token: string }) {
+  const { showToast } = useToast();
   const [items, setItems] = useState<NoticeResDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -61,7 +63,7 @@ export default function NoticesTab({ token }: { token: string }) {
       }
       setShowForm(false);
       await fetchList();
-    } catch { alert('저장에 실패했습니다.'); }
+    } catch { showToast('저장에 실패했습니다.', 'error'); }
     finally { setSaving(false); }
   };
 
@@ -70,7 +72,7 @@ export default function NoticesTab({ token }: { token: string }) {
     try {
       await noticeApi.adminDelete(id, token);
       await fetchList();
-    } catch { alert('삭제에 실패했습니다.'); }
+    } catch { showToast('삭제에 실패했습니다.', 'error'); }
   };
 
   const typeLabels: Record<string, string> = { NORMAL: '일반', IMPORTANT: '중요', POPUP: '팝업' };

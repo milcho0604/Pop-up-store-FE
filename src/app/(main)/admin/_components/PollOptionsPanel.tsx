@@ -3,8 +3,10 @@
 import { useState, FormEvent } from 'react';
 import { pollApi } from '@/lib/poll';
 import { PollResDto } from '@/types/poll';
+import { useToast } from '@/context/ToastContext';
 
 export default function PollOptionsPanel({ poll, token, onRefresh }: { poll: PollResDto; token: string; onRefresh: () => void }) {
+  const { showToast } = useToast();
   const [newPostId, setNewPostId] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [adding, setAdding] = useState(false);
@@ -22,7 +24,7 @@ export default function PollOptionsPanel({ poll, token, onRefresh }: { poll: Pol
       setNewPostId('');
       setNewDesc('');
       onRefresh();
-    } catch { alert('옵션 추가에 실패했습니다.'); }
+    } catch { showToast('옵션 추가에 실패했습니다.', 'error'); }
     finally { setAdding(false); }
   };
 
@@ -32,7 +34,7 @@ export default function PollOptionsPanel({ poll, token, onRefresh }: { poll: Pol
     try {
       await pollApi.adminDeleteOption(optionId, token);
       onRefresh();
-    } catch { alert('옵션 삭제에 실패했습니다.'); }
+    } catch { showToast('옵션 삭제에 실패했습니다.', 'error'); }
     finally { setDeletingId(null); }
   };
 

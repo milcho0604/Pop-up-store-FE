@@ -5,8 +5,10 @@ import { pollApi, PollSaveDto } from '@/lib/poll';
 import { PollResDto } from '@/types/poll';
 import { formatDate, toDatetimeLocal, fromDatetimeLocal } from './adminUtils';
 import PollOptionsPanel from './PollOptionsPanel';
+import { useToast } from '@/context/ToastContext';
 
 export default function PollsTab({ token }: { token: string }) {
+  const { showToast } = useToast();
   const [items, setItems] = useState<PollResDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -66,7 +68,7 @@ export default function PollsTab({ token }: { token: string }) {
       }
       setShowForm(false);
       await fetchList();
-    } catch { alert('저장에 실패했습니다.'); }
+    } catch { showToast('저장에 실패했습니다.', 'error'); }
     finally { setSaving(false); }
   };
 
@@ -76,7 +78,7 @@ export default function PollsTab({ token }: { token: string }) {
       await pollApi.adminDelete(id, token);
       if (expandedId === id) setExpandedId(null);
       await fetchList();
-    } catch { alert('삭제에 실패했습니다.'); }
+    } catch { showToast('삭제에 실패했습니다.', 'error'); }
   };
 
   const inputClass = 'w-full px-3 py-2.5 bg-gray-50 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200';

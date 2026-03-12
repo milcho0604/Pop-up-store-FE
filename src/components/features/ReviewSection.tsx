@@ -8,6 +8,7 @@ import { reviewApi } from '@/lib/review';
 import { getTokenMemberId } from '@/lib/auth';
 import { timeAgo } from '@/lib/time';
 import LoginPrompt from '@/components/ui/LoginPrompt';
+import { useToast } from '@/context/ToastContext';
 
 interface ReviewSectionProps {
   postId: number;
@@ -57,6 +58,7 @@ function StarRating({
 }
 
 export default function ReviewSection({ postId }: ReviewSectionProps) {
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [reviews, setReviews] = useState<ReviewResDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,11 +123,11 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
     }
 
     if (!satisfaction || !waitingTime || !photoAvailability) {
-      alert('별점을 모두 선택해주세요.');
+      showToast('별점을 모두 선택해주세요.', 'error');
       return;
     }
     if (!content.trim()) {
-      alert('리뷰 내용을 입력해주세요.');
+      showToast('리뷰 내용을 입력해주세요.', 'error');
       return;
     }
 
@@ -141,7 +143,7 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
       resetForm();
       await fetchReviews();
     } catch {
-      alert('리뷰 작성에 실패했습니다.');
+      showToast('리뷰 작성에 실패했습니다.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -155,7 +157,7 @@ export default function ReviewSection({ postId }: ReviewSectionProps) {
       await reviewApi.delete(reviewId, token);
       await fetchReviews();
     } catch {
-      alert('리뷰 삭제에 실패했습니다.');
+      showToast('리뷰 삭제에 실패했습니다.', 'error');
     }
   };
 
@@ -375,7 +377,7 @@ function ReviewItem({
       );
       setIsEditing(false);
     } catch {
-      alert('리뷰 수정에 실패했습니다.');
+      showToast('리뷰 수정에 실패했습니다.', 'error');
     } finally {
       setEditSubmitting(false);
     }

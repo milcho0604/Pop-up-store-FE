@@ -14,6 +14,7 @@ import ReviewSection from '@/components/features/ReviewSection';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 import ImageViewer from '@/components/ui/ImageViewer';
 import PostInfoSection from './_components/PostInfoSection';
+import { useToast } from '@/context/ToastContext';
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '';
@@ -26,6 +27,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const postId = Number(id);
   const router = useRouter();
+  const { showToast } = useToast();
 
   const [post, setPost] = useState<PostDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
       await postApi.delete(postId, token);
       router.replace('/');
     } catch {
-      alert('삭제에 실패했습니다.');
+      showToast('삭제에 실패했습니다.', 'error');
     }
   };
 

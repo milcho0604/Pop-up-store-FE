@@ -5,8 +5,10 @@ import { informationApi } from '@/lib/information';
 import { InformationListDto } from '@/types/member';
 import { timeAgo } from '@/lib/time';
 import { statusLabel } from './adminUtils';
+import { useToast } from '@/context/ToastContext';
 
 export default function ReportsTab({ token }: { token: string }) {
+  const { showToast } = useToast();
   const [items, setItems] = useState<InformationListDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
@@ -40,7 +42,7 @@ export default function ReportsTab({ token }: { token: string }) {
       else if (action === 'cancel') await informationApi.adminCancelApproval(id, token);
       await fetch();
     } catch {
-      alert('처리에 실패했습니다.');
+      showToast('처리에 실패했습니다.', 'error');
     } finally {
       setActionLoading(null);
     }
