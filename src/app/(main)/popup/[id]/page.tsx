@@ -15,6 +15,7 @@ import LoginPrompt from '@/components/ui/LoginPrompt';
 import ImageViewer from '@/components/ui/ImageViewer';
 import PostInfoSection from './_components/PostInfoSection';
 import { useToast } from '@/context/ToastContext';
+import { loadKakaoShare, shareToKakao } from '@/lib/kakaoShare';
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '';
@@ -35,7 +36,7 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [favorited, setFavorited] = useState(false);
-  const [shareToast, setShareToast] = useState(false);
+  const [shareSheet, setShareSheet] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -126,31 +127,49 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: post?.title ?? '', url });
-        return;
-      }
-    } catch {
-      // share dialog cancelled
-    }
+  const handleShare = () => setShareSheet(true);
 
+  const handleCopyLink = async () => {
+    const url = window.location.href;
     try {
       await navigator.clipboard.writeText(url);
     } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = url;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
       document.execCommand('copy');
-      document.body.removeChild(textarea);
+      document.body.removeChild(ta);
     }
-    setShareToast(true);
-    setTimeout(() => setShareToast(false), 2000);
+    setShareSheet(false);
+    showToast('링크가 복사되었습니다', 'success');
+  };
+
+  const handleKakaoShare = async () => {
+    if (!post) return;
+    try {
+      await loadKakaoShare();
+      shareToKakao(
+        post.title,
+        post.content?.slice(0, 100) ?? '',
+        post.postImgUrl ?? null,
+        window.location.href,
+      );
+      setShareSheet(false);
+    } catch {
+      showToast('카카오 공유를 불러올 수 없습니다.', 'error');
+    }
+  };
+
+  const handleNativeShare = async () => {
+    try {
+      await navigator.share({ title: post?.title ?? '', url: window.location.href });
+      setShareSheet(false);
+    } catch {
+      // 취소
+    }
   };
 
   if (loading) {
@@ -353,11 +372,62 @@ export default function PopupDetailPage({ params }: { params: Promise<{ id: stri
 
       <LoginPrompt open={showLogin} onClose={() => setShowLogin(false)} />
 
-      {/* Share Toast */}
-      {shareToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-sm px-5 py-2.5 rounded-full shadow-lg animate-fade-in z-50">
-          링크가 복사되었습니다
-        </div>
+      {/* Share Sheet */}
+      {shareSheet && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setShareSheet(false)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl px-5 pt-5 pb-10 animate-slide-up">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <p className="text-sm font-semibold text-gray-900 mb-4">공유하기</p>
+            <div className="flex gap-6">
+              <button
+                onClick={handleKakaoShare}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-yellow-400 flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="#3C1E1E">
+                    <path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.568 1.423 4.832 3.594 6.218L4.5 21l4.657-2.43C10.031 18.847 11 19 12 19c5.523 0 10-3.477 10-8.5S17.523 3 12 3z" />
+                  </svg>
+                </div>
+                <span className="text-xs text-gray-600">카카오톡</span>
+              </button>
+
+              <button
+                onClick={handleCopyLink}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                </div>
+                <span className="text-xs text-gray-600">링크 복사</span>
+              </button>
+
+              {typeof navigator !== 'undefined' && 'share' in navigator && (
+                <button
+                  onClick={handleNativeShare}
+                  className="flex flex-col items-center gap-2"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                  </div>
+                  <span className="text-xs text-gray-600">더보기</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
