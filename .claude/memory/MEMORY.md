@@ -11,7 +11,7 @@
 - 컴포넌트: `src/components/features/` (기능별), `src/components/ui/` (공통 UI)
 - API 클라이언트: `src/lib/` (api.ts, comment.ts, post.ts 등)
 - 타입 정의: `src/types/`
-- 백엔드 경로: `/Users/milcho/Project/popup` (Spring Boot)
+- 백엔드 경로: `~/Project/popup` (Spring Boot) — 새 PC에서는 CLAUDE.md의 경로도 함께 수정
 
 ## 구현 이력
 - 댓글 대댓글 기능 구현 완료 (백엔드 `POST /comment/reply` 연동, 2단계 중첩까지 허용)
