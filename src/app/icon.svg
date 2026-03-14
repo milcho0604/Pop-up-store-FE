@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dark rounded background -->
+  <rect width="512" height="512" rx="100" fill="#111111"/>
+
+  <!-- Awning with scalloped bottom edge (14 scallops × 26px = 364px, x=76 to x=440) -->
+  <path d="M72,272 L256,140 L440,272
+    Q427,294 414,272 Q401,294 388,272 Q375,294 362,272
+    Q349,294 336,272 Q323,294 310,272 Q297,294 284,272
+    Q271,294 258,272 Q245,294 232,272 Q219,294 206,272
+    Q193,294 180,272 Q167,294 154,272 Q141,294 128,272
+    Q115,294 102,272 Q89,294 76,272 Z"
+    fill="white"/>
+
+  <!-- Store body (no rounded top to blend with awning) -->
+  <path d="M104,272 H408 V446 Q408,462 392,462 H120 Q104,462 104,446 Z" fill="white"/>
+
+  <!-- Sign banner hanging from peak -->
+  <line x1="256" y1="140" x2="218" y2="194" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="256" y1="140" x2="294" y2="194" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <rect x="188" y="194" width="136" height="52" rx="8" fill="#111111"/>
+  <!-- 4-point star inside sign -->
+  <line x1="256" y1="207" x2="256" y2="233" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="243" y1="220" x2="269" y2="220" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="248" y1="211" x2="264" y2="229" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <line x1="264" y1="211" x2="248" y2="229" stroke="white" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Door -->
+  <rect x="212" y="350" width="88" height="112" rx="10" fill="#111111"/>
+  <!-- Door knob -->
+  <circle cx="291" cy="412" r="6" fill="white"/>
+
+  <!-- Left window -->
+  <rect x="118" y="294" width="74" height="56" rx="6" fill="#111111"/>
+  <line x1="155" y1="294" x2="155" y2="350" stroke="white" stroke-width="2.5"/>
+  <line x1="118" y1="322" x2="192" y2="322" stroke="white" stroke-width="2.5"/>
+
+  <!-- Right window -->
+  <rect x="320" y="294" width="74" height="56" rx="6" fill="#111111"/>
+  <line x1="357" y1="294" x2="357" y2="350" stroke="white" stroke-width="2.5"/>
+  <line x1="320" y1="322" x2="394" y2="322" stroke="white" stroke-width="2.5"/>
+
+  <!-- Large sparkle top-right -->
+  <line x1="410" y1="78" x2="410" y2="116" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <line x1="391" y1="97" x2="429" y2="97" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <line x1="397" y1="84" x2="423" y2="110" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="423" y1="84" x2="397" y2="110" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Small sparkle top-left -->
+  <line x1="108" y1="106" x2="108" y2="128" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="97" y1="117" x2="119" y2="117" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="101" y1="110" x2="115" y2="124" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <line x1="115" y1="110" x2="101" y2="124" stroke="white" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Dot accents -->
+  <circle cx="456" cy="162" r="8" fill="white"/>
+  <circle cx="66"  cy="196" r="6" fill="white"/>
+  <circle cx="380" cy="78"  r="5" fill="white"/>
+  <circle cx="458" cy="244" r="5" fill="white"/>
+  <circle cx="144" cy="80"  r="4" fill="white"/>
+</svg>
