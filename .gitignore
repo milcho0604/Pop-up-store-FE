@@ -27,8 +27,8 @@
 # IDE
 .idea/
 
-# Claude Code local settings
-.claude/
+# Claude Code local settings (local only, do not commit)
+.claude/settings.local.json
 
 # debug
 npm-debug.log*
