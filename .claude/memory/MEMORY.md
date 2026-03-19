@@ -21,3 +21,19 @@
   - `getItem/setItem` 래퍼 함수를 만들어 환경(웹/네이티브)에 따라 자동 전환
   - iOS는 OS가 WebView localStorage를 날릴 수 있어 불안정 → NSUserDefaults가 안전
   - Capacitor 세팅 시 같이 구현할 것 (사용자가 요청)
+
+## 현재 우선순위 메모
+- 문서보다 실제 코드가 최신 상태임
+  - 실제 스택은 `Next.js 16.1.4`, `React 19.2.3`
+  - `CLAUDE.md`, `docs/PROJECT_GUIDE.md`, `README.md`는 현재 코드 기준으로 다시 정리 필요
+- 다음 핵심 작업은 인증/스토리지 추상화 정리
+  - `storage.ts`는 있지만 인증 토큰 접근은 아직 여러 곳에서 `localStorage` 직접 사용 중
+  - Capacitor 전환 전 토큰 저장/조회/삭제를 공통 경로로 모아야 함
+- 에러 처리가 약한 페이지가 많음
+  - `catch {}` 또는 조용히 무시하는 패턴이 많아서 사용자 피드백 보강 필요
+- 타입 정리 필요
+  - 특히 댓글 타입에 백엔드 잔재 필드명(`doctorEmail`, `PostId`)이 남아 있어 주의
+- 로그인 화면의 Google 버튼은 현재 placeholder 성격
+  - 실제 소셜 로그인 연동 전까지는 미구현 기능으로 봐야 함
+- 테스트 파일이 아직 없음
+  - 이후 순수 로직(`auth`, `storage`, `search history` 등)부터 최소 테스트 기반 추가 필요
