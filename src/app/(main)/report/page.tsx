@@ -4,6 +4,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { informationApi, InformationCreateReqDto } from '@/lib/information';
+import LocationSearchInput from '@/components/features/LocationSearchInput';
+import { LocationInfo } from '@/lib/location';
+import { useToast } from '@/context/ToastContext';
 import LoginPrompt from '@/components/ui/LoginPrompt';
 
 const categories = [
@@ -21,6 +24,7 @@ const categories = [
 
 export default function ReportPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -91,6 +95,7 @@ export default function ReportPage() {
         tagNames: tags.length > 0 ? tags : undefined,
       };
       await informationApi.create(token, data, postImage ?? undefined);
+      showToast('제보가 등록되었습니다!', 'success');
       router.push('/mypage');
     } catch {
       setError('제보 등록에 실패했습니다.');
@@ -202,18 +207,17 @@ export default function ReportPage() {
 
               {/* 주소 */}
               <div className="pt-3 border-t border-gray-100">
-                <p className="text-xs text-gray-400 mb-4">위치 정보</p>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5">시/도</label>
-                      <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="서울" className={inputClass} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5">동</label>
-                      <input type="text" value={dong} onChange={(e) => setDong(e.target.value)} placeholder="성수동" className={inputClass} />
-                    </div>
-                  </div>
+                <p className="text-xs text-gray-400 mb-2">위치 정보</p>
+                <LocationSearchInput
+                  onSelect={(info: LocationInfo) => {
+                    setCity(info.city);
+                    setDong(info.dong);
+                  }}
+                />
+                {(city || dong) && (
+                  <p className="text-xs text-gray-500 mt-2">{city} {dong}</p>
+                )}
+                <div className="space-y-3 mt-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1.5">도로명 주소</label>
                     <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="성수이로 100" className={inputClass} />
