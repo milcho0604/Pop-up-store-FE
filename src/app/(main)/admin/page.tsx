@@ -8,22 +8,23 @@ import ReportsTab from './_components/ReportsTab';
 import NoticesTab from './_components/NoticesTab';
 import PollsTab from './_components/PollsTab';
 import MembersTab from './_components/MembersTab';
+import QABotTab from './_components/QABotTab';
 
-type TabType = 'reports' | 'notices' | 'polls' | 'members';
+type TabType = 'reports' | 'notices' | 'polls' | 'members' | 'qa';
 
 export default function AdminPage() {
   const router = useRouter();
-  const [token, setToken] = useState<string | null>(null);
+  const [token] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('token');
+  });
   const [tab, setTab] = useState<TabType>('reports');
 
   useEffect(() => {
-    const t = localStorage.getItem('token');
-    if (!t || !isAdmin(t)) {
+    if (!token || !isAdmin(token)) {
       router.replace('/');
-      return;
     }
-    setToken(t);
-  }, [router]);
+  }, [router, token]);
 
   if (!token) return null;
 
@@ -32,6 +33,7 @@ export default function AdminPage() {
     { key: 'notices', label: '공지사항' },
     { key: 'polls', label: '투표' },
     { key: 'members', label: '회원' },
+    { key: 'qa', label: 'QA봇' },
   ];
 
   return (
@@ -62,6 +64,7 @@ export default function AdminPage() {
       {tab === 'notices'  && <NoticesTab  token={token} />}
       {tab === 'polls'    && <PollsTab    token={token} />}
       {tab === 'members'  && <MembersTab  token={token} />}
+      {tab === 'qa'       && <QABotTab    token={token} />}
     </div>
   );
 }

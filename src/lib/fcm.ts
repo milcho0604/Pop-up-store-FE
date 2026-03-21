@@ -7,5 +7,5 @@ export const fcmApi = {
 
   // FCM 토큰 삭제 (로그아웃 전)
   logout: (jwtToken: string) =>
-    api.withAuth(jwtToken).post<ApiResponse<null>>('/fcm/logout', {}),
+    api.withAuth(jwtToken).delete<ApiResponse<null>>('/fcm/token'),
 };
